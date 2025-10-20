@@ -16,7 +16,7 @@ public class Constants {
     public static PathConstraints pathConstraints = new PathConstraints(0.99, 100, 1, 1);
 
     public static Follower createFollower(HardwareMap hardwareMap) {
-        return new FollowerBuilder(followerConstants, hardwareMap)
+        return new FollowerBuilder(followerConstants, hardwareMap) // Li's change
                 .pathConstraints(pathConstraints) // very cool
                 .build(); //super cool cool
 
