@@ -7,7 +7,7 @@ import com.qualcomm.robotcore.eventloop.opmode.OpMode;
 public class ColorSensorTest extends OpMode {
     TestBenchColor bench = new TestBenchColor();
     @Override
-    public void init(){
+    public void init(){ // made by WB
         bench.init(hardwareMap);
     }
 
