@@ -11,7 +11,7 @@ public class drive extends LinearOpMode {
         private DcMotor rightFront;
         private DcMotor rightBack;
         private DcMotor leftBack;
-        private DcMotor leftFront;
+        private DcMotor leftFront;//skib
 
         @Override
         public void runOpMode() {
