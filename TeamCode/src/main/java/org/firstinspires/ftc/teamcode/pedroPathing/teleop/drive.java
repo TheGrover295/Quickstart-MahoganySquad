@@ -13,51 +13,50 @@ public class drive extends LinearOpMode {
         private DcMotor leftBack;
         private DcMotor leftFront;//skib
 
-        @Override
-        public void runOpMode() {
+    @Override
+    public void runOpMode() {
+        double speed;
+        double x;
+        double y;
+        double rz;
 
-            double speed;
-            double x;
-            double y;
-            double rz;
-
-
-            rightFront = hardwareMap.get(DcMotor.class, "rightFront");
-            rightBack = hardwareMap.get(DcMotor.class, "rightBack");
-            leftBack = hardwareMap.get(DcMotor.class, "leftBack");
-            leftFront = hardwareMap.get(DcMotor.class, "leftFront");
-
-            // Put initialization blocks here.
-            rightFront.setDirection(DcMotor.Direction.REVERSE);
-            rightBack.setDirection(DcMotor.Direction.REVERSE);
-            leftBack.setDirection(DcMotor.Direction.REVERSE);
+        rightFront = hardwareMap.get(DcMotor.class, "rightFront");
+        rightBack = hardwareMap.get(DcMotor.class, "rightBack");
+        leftBack = hardwareMap.get(DcMotor.class, "leftBack");
+        leftFront = hardwareMap.get(DcMotor.class, "leftFront");
 
 
-            waitForStart();
-            if (opModeIsActive()) {
-                // Put run blocks here.
-                while (opModeIsActive()) {
-                    speed = 0.85;
-                    x = Math.pow(gamepad1.left_stick_x, 3);
-                    y = -Math.pow(gamepad1.left_stick_y, 3);
-                    rz = Math.pow(gamepad1.right_stick_x, 3);
+        // Put initialization blocks here.
+        rightFront.setDirection(DcMotor.Direction.REVERSE);
+        rightBack.setDirection(DcMotor.Direction.REVERSE);
+        leftBack.setDirection(DcMotor.Direction.REVERSE);
+        waitForStart();
+        if (opModeIsActive()) {
+            // Put run blocks here.
+            while (opModeIsActive()) {
 
-                    // drive code
-                    leftBack.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
-                    leftFront.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
-                    rightBack.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
-                    rightFront.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
-                    leftBack.setPower(((y - x) + rz) * speed);
-                    leftFront.setPower((y + x + rz) * speed);
-                    rightBack.setPower(((y + x) - rz) * speed);
-                    rightFront.setPower(((y - x) - rz) * speed);
-                    // telemetry
-                    telemetry.addData("x", gamepad1.left_stick_x);
-                    telemetry.addData("y", gamepad1.left_stick_y);
-                    telemetry.addData("rx", gamepad1.right_stick_x);
-                    telemetry.update();
-                }
+                speed = 0.85;
+                x = Math.pow(gamepad1.left_stick_x, 3);
+                y = -Math.pow(gamepad1.left_stick_y, 3);
+                rz = Math.pow(gamepad1.right_stick_x, 3);
+                // drive code
+                leftBack.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
+                leftFront.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
+                rightBack.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
+                rightFront.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
+                // drive code
+                leftBack.setPower(((y - x) + rz) * speed);
+                leftFront.setPower((y + x + rz) * speed);
+                rightBack.setPower(((y + x) - rz) * speed);
+                rightFront.setPower(((y - x) - rz) * speed);
+                // telemetry
+                telemetry.addData("x", gamepad1.left_stick_x);
+                telemetry.addData("y", gamepad1.left_stick_y);
+                telemetry.addData("rx", gamepad1.right_stick_x);
+
+                telemetry.update();
             }
         }
+    }
 }
 
