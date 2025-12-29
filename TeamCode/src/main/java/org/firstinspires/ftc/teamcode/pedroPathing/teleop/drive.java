@@ -47,9 +47,8 @@ public class drive extends LinearOpMode {
 
         // Put initialization blocks here.
         flywheelMotor.setDirection(DcMotorSimple.Direction.REVERSE);
-        rightFront.setDirection(DcMotor.Direction.REVERSE);
-        rightBack.setDirection(DcMotor.Direction.REVERSE);
         leftBack.setDirection(DcMotor.Direction.REVERSE);
+        leftFront.setDirection(DcMotor.Direction.REVERSE);
 
 
         waitForStart();
@@ -57,7 +56,7 @@ public class drive extends LinearOpMode {
             // Put run blocks here.
             while (opModeIsActive()) {
 
-                speed = 0.85;
+                speed = 1;
                 x = Math.pow(gamepad1.left_stick_x, 3);
                 y = -Math.pow(gamepad1.left_stick_y, 3);
                 rz = Math.pow(gamepad1.right_stick_x, 3);

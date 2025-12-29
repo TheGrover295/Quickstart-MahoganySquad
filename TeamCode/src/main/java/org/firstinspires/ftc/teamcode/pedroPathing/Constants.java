@@ -31,10 +31,27 @@ public class Constants {
             .rightFrontMotorDirection(DcMotorSimple.Direction.REVERSE)
             .rightRearMotorDirection(DcMotorSimple.Direction.REVERSE);
 
+    public static TwoWheelConstants localizerConstants = new TwoWheelConstants()
+            .forwardEncoder_HardwareMapName("rightFront") // check
+            .strafeEncoder_HardwareMapName("rightBack") // check
+            .strafePodX(0) // in
+            .forwardPodY(0)
+            .forwardTicksToInches(0)
+            .strafeTicksToInches(0)
+            .forwardEncoderDirection(Encoder.FORWARD)
+            .strafeEncoderDirection(Encoder.REVERSE)
+            .IMU_HardwareMapName("imu")
+            .IMU_Orientation(
+                    new RevHubOrientationOnRobot(
+                            RevHubOrientationOnRobot.LogoFacingDirection.UP, // check
+                            RevHubOrientationOnRobot.UsbFacingDirection.RIGHT
+                    )
+            );
     public static PathConstraints pathConstraints = new PathConstraints(0.99, 100, 1, 1);
 
     public static Follower createFollower(HardwareMap hardwareMap) {
         return new FollowerBuilder(followerConstants, hardwareMap)
+                .twoWheelLocalizer(localizerConstants)
                 .pathConstraints(pathConstraints)
                 .mecanumDrivetrain(driveConstants)
                 .build();
