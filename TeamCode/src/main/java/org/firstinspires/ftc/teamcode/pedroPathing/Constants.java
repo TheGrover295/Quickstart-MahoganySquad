@@ -30,4 +30,16 @@ public class Constants {
                 .pathConstraints(pathConstraints)
                 .build();
     }
+
+
+    public static MecanumConstants driveConstants = new MecanumConstants()
+            .maxPower(1)
+            .rightFrontMotorName("rightFront")
+            .rightRearMotorName("rightBack")
+            .leftRearMotorName("leftBack")
+            .leftFrontMotorName("leftFront")
+            .leftFrontMotorDirection(DcMotorSimple.Direction.FORWARD)
+            .leftRearMotorDirection(DcMotorSimple.Direction.REVERSE)
+            .rightFrontMotorDirection(DcMotorSimple.Direction.REVERSE)
+            .rightRearMotorDirection(DcMotorSimple.Direction.REVERSE);
 }
