@@ -18,7 +18,7 @@ import com.qualcomm.robotcore.hardware.DcMotorSimple;
 public class Constants {
 
     public static FollowerConstants followerConstants = new FollowerConstants()
-            .mass(0); //kg
+            .mass(12.92738); //kg
 
     public static MecanumConstants driveConstants = new MecanumConstants()
             .maxPower(1)
@@ -26,20 +26,21 @@ public class Constants {
             .rightRearMotorName("rightBack")
             .leftRearMotorName("leftBack")
             .leftFrontMotorName("leftFront")
-            .leftFrontMotorDirection(DcMotorSimple.Direction.FORWARD)
-            .leftRearMotorDirection(DcMotorSimple.Direction.REVERSE)
-            .rightFrontMotorDirection(DcMotorSimple.Direction.REVERSE)
-            .rightRearMotorDirection(DcMotorSimple.Direction.REVERSE);
+            .leftFrontMotorDirection(DcMotorSimple.Direction.REVERSE)
+            .leftRearMotorDirection(DcMotorSimple.Direction.REVERSE);
+            //.xVelocity(0);
+
+
 
     public static TwoWheelConstants localizerConstants = new TwoWheelConstants()
-            .forwardEncoder_HardwareMapName("rightFront") // check
+            .forwardEncoder_HardwareMapName("leftFront") // check
             .strafeEncoder_HardwareMapName("rightBack") // check
-            .strafePodX(0) // in
-            .forwardPodY(0)
-            .forwardTicksToInches(0)
-            .strafeTicksToInches(0)
-            .forwardEncoderDirection(Encoder.FORWARD)
-            .strafeEncoderDirection(Encoder.REVERSE)
+            .strafePodX(7.5) // in
+            .forwardPodY(6.90625)
+            .forwardTicksToInches(0.0019908630888750972)
+            .strafeTicksToInches(0.0019827227745479285)
+            .forwardEncoderDirection(Encoder.REVERSE)
+            .strafeEncoderDirection(Encoder.FORWARD)
             .IMU_HardwareMapName("imu")
             .IMU_Orientation(
                     new RevHubOrientationOnRobot(
