@@ -18,7 +18,13 @@ import com.qualcomm.robotcore.hardware.DcMotorSimple;
 public class Constants {
 
     public static FollowerConstants followerConstants = new FollowerConstants()
-            .mass(12.92738); //kg
+            .mass(12.92738) //kg
+            .forwardZeroPowerAcceleration(-37.52061198941806)
+            .lateralZeroPowerAcceleration(-61.18159301852432)
+            .useSecondaryTranslationalPIDF(true)
+            .useSecondaryHeadingPIDF(true)
+            .useSecondaryDrivePIDF(true);
+
 
     public static MecanumConstants driveConstants = new MecanumConstants()
             .maxPower(1)
@@ -27,14 +33,15 @@ public class Constants {
             .leftRearMotorName("leftBack")
             .leftFrontMotorName("leftFront")
             .leftFrontMotorDirection(DcMotorSimple.Direction.REVERSE)
-            .leftRearMotorDirection(DcMotorSimple.Direction.REVERSE);
-            //.xVelocity(0);
+            .leftRearMotorDirection(DcMotorSimple.Direction.REVERSE)
+            .xVelocity(46.12063812749623)
+            .yVelocity(39.26907919738612);
 
 
 
     public static TwoWheelConstants localizerConstants = new TwoWheelConstants()
-            .forwardEncoder_HardwareMapName("leftFront") // check
-            .strafeEncoder_HardwareMapName("rightBack") // check
+            .forwardEncoder_HardwareMapName("leftFront")
+            .strafeEncoder_HardwareMapName("rightBack")
             .strafePodX(7.5) // in
             .forwardPodY(6.90625)
             .forwardTicksToInches(0.0019908630888750972)
@@ -44,7 +51,7 @@ public class Constants {
             .IMU_HardwareMapName("imu")
             .IMU_Orientation(
                     new RevHubOrientationOnRobot(
-                            RevHubOrientationOnRobot.LogoFacingDirection.UP, // check
+                            RevHubOrientationOnRobot.LogoFacingDirection.UP,
                             RevHubOrientationOnRobot.UsbFacingDirection.RIGHT
                     )
             );

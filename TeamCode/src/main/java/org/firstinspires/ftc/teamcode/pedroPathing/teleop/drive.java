@@ -15,6 +15,7 @@ public class drive extends LinearOpMode {
         private DcMotor leftBack;
         private DcMotor leftFront;//skib
         private DcMotor flywheelMotor;
+        private DcMotor intakeMotor;
 
         public Servo artifactTransfer;
 
@@ -33,6 +34,7 @@ public class drive extends LinearOpMode {
         double y;
         double rz;
         double flywheelSpeed;
+        double intakeSpeed;
 
 
         rightFront = hardwareMap.get(DcMotor.class, "rightFront");
@@ -40,6 +42,7 @@ public class drive extends LinearOpMode {
         leftBack = hardwareMap.get(DcMotor.class, "leftBack");
         leftFront = hardwareMap.get(DcMotor.class, "leftFront");
         flywheelMotor = hardwareMap.get(DcMotor.class, "flywheel");
+        intakeMotor = hardwareMap.get(DcMotor.class, "intakeMotor");
 
         artifactTransfer = hardwareMap.get(Servo.class, "artifactTransfer");
         //artifactTransfer.setPosition(MIN_POS);
@@ -47,6 +50,7 @@ public class drive extends LinearOpMode {
 
         // Put initialization blocks here.
         flywheelMotor.setDirection(DcMotorSimple.Direction.REVERSE);
+        intakeMotor.setDirection(DcMotorSimple.Direction.REVERSE);
         leftBack.setDirection(DcMotor.Direction.REVERSE);
         leftFront.setDirection(DcMotor.Direction.REVERSE);
 
@@ -61,11 +65,16 @@ public class drive extends LinearOpMode {
                 y = -Math.pow(gamepad1.left_stick_y, 3);
                 rz = Math.pow(gamepad1.right_stick_x, 3);
                 flywheelSpeed = 1;
+                intakeSpeed = 1;
                 //flywheelMotor.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
-
+                if (gamepad1.dpad_up){
+                    intakeMotor.setPower(intakeSpeed);
+                }
+                if (gamepad1.dpad_down){
+                    intakeMotor.setPower(0);
+                }
                 if (gamepad1.a) {
                     moveServoByDegrees(0.5);
-
                 }
                 if (gamepad1.y) {
                     artifactTransfer.setPosition(-0.5);
