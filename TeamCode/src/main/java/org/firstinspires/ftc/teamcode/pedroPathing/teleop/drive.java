@@ -16,6 +16,7 @@ public class drive extends LinearOpMode {
         private DcMotor leftFront;//skib
         private DcMotor flywheelMotor;
         private DcMotor intakeMotor;
+        private Servo chamberSpinner;
 
         public Servo artifactTransfer;
 
@@ -35,6 +36,7 @@ public class drive extends LinearOpMode {
         double rz;
         double flywheelSpeed;
         double intakeSpeed;
+        double chamberSpeed;
 
 
         rightFront = hardwareMap.get(DcMotor.class, "rightFront");
@@ -44,6 +46,7 @@ public class drive extends LinearOpMode {
         flywheelMotor = hardwareMap.get(DcMotor.class, "flywheel");
         intakeMotor = hardwareMap.get(DcMotor.class, "intakeMotor");
 
+        chamberSpinner = hardwareMap.get(Servo.class, "chamberSpinner");
         artifactTransfer = hardwareMap.get(Servo.class, "artifactTransfer");
         //artifactTransfer.setPosition(MIN_POS);
         currentPos = MIN_POS;
@@ -73,6 +76,16 @@ public class drive extends LinearOpMode {
                 if (gamepad1.dpad_down){
                     intakeMotor.setPower(0);
                 }
+                if (gamepad1.dpad_left){
+                    intakeMotor.setPower(intakeSpeed);
+                    chamberSpinner.setDirection(Servo.Direction.REVERSE);
+                    chamberSpinner.setPosition(0.5);
+                    sleep(3000);
+                    chamberSpinner.setDirection(Servo.Direction.REVERSE);
+                    chamberSpinner.setPosition(0.8);
+                    //chamberSpinner.setPosition(0.2);
+
+                }
                 if (gamepad1.a) {
                     moveServoByDegrees(0.5);
                 }
@@ -101,6 +114,7 @@ public class drive extends LinearOpMode {
                 telemetry.addData("x", gamepad1.left_stick_x);
                 telemetry.addData("y", gamepad1.left_stick_y);
                 telemetry.addData("rx", gamepad1.right_stick_x);
+                telemetry.addData("Axon Pos", chamberSpinner.getPosition());
                 telemetry.addData("Servo Position", artifactTransfer.getPosition());
 
                 telemetry.update();
@@ -109,12 +123,13 @@ public class drive extends LinearOpMode {
     }
 
     public void moveServoByDegrees(double degrees){
+        chamberSpinner.setDirection(Servo.Direction.REVERSE);
         double positionChange = degrees / MAX_DEGREES;
         double newPosition = currentPos + positionChange;
 
         newPosition = Math.max(MIN_POS, Math.min(MAX_POS, newPosition));
 
-        artifactTransfer.setPosition(newPosition);
+        chamberSpinner.setPosition(newPosition);
         currentPos = newPosition;
     }
 }
