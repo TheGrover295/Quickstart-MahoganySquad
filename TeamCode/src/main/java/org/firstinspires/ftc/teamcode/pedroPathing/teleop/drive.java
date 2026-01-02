@@ -21,11 +21,12 @@ public class drive extends LinearOpMode {
         public Servo artifactTransfer;
 
 
-        static final double MAX_DEGREES = 90;
+        static final double MAX_DEGREES = 360;
         static final double MIN_POS = 0; // reprogram servo to be at diffrent 0 pos
         static final double MAX_POS = 1.0;
 
         double currentPos = 0.0;
+        boolean prevDpadLeft = false;
 
 
     @Override
@@ -76,16 +77,39 @@ public class drive extends LinearOpMode {
                 if (gamepad1.dpad_down){
                     intakeMotor.setPower(0);
                 }
-                if (gamepad1.dpad_left){
-                    intakeMotor.setPower(intakeSpeed);
-                    chamberSpinner.setDirection(Servo.Direction.REVERSE);
-                    chamberSpinner.setPosition(0.5);
-                    sleep(3000);
-                    chamberSpinner.setDirection(Servo.Direction.REVERSE);
-                    chamberSpinner.setPosition(0.8);
+                //if (gamepad1.dpad_left){
+
+                    //intakeMotor.setPower(intakeSpeed);
+                    //chamberSpinner.setDirection(Servo.Direction.REVERSE);
+                    //chamberSpinner.setPosition(0.5);
+                    //sleep(3000);
+                    //chamberSpinner.setDirection(Servo.Direction.REVERSE);
+                    //chamberSpinner.setPosition(1);
                     //chamberSpinner.setPosition(0.2);
 
+                //}
+
+                boolean currentDpadLeft = gamepad1.dpad_left;
+
+
+                // run once per press (rising edge)
+                if (currentDpadLeft && !prevDpadLeft) {
+                    // advance by one third of the range
+                    double step = (MAX_POS - MIN_POS) / 3.0;
+                    currentPos += step;
+
+                    // wrap around after full revolution
+                    if (currentPos > MAX_POS) {
+                        currentPos = MIN_POS;
+                    }
+
+                    chamberSpinner.setDirection(Servo.Direction.REVERSE);
+                    chamberSpinner.setPosition(currentPos);
                 }
+
+                // remember for next loop
+                prevDpadLeft = currentDpadLeft;
+
                 if (gamepad1.a) {
                     moveServoByDegrees(0.5);
                 }

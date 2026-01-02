@@ -20,8 +20,12 @@ public class Constants {
     public static FollowerConstants followerConstants = new FollowerConstants()
             .mass(12.92738) //kg
             .forwardZeroPowerAcceleration(-37.52061198941806)
-            .lateralZeroPowerAcceleration(-61.18159301852432);
-
+            .lateralZeroPowerAcceleration(-61.18159301852432)
+            .translationalPIDFCoefficients(new PIDFCoefficients(0.39, 0, 0.004, 0.04))
+            .headingPIDFCoefficients(new PIDFCoefficients(0.58, 0, 0.004, 0.003))
+            .drivePIDFCoefficients(new FilteredPIDFCoefficients(0.4, 0, 0.0001, 0.6, 0.025))
+            .centripetalScaling(0.005)
+            ;
 
 
     public static MecanumConstants driveConstants = new MecanumConstants()
