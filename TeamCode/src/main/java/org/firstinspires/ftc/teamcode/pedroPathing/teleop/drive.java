@@ -16,7 +16,9 @@ public class drive extends LinearOpMode {
     private DcMotor leftBack;
     private DcMotor leftFront;
     private DcMotor flywheelMotor;
+    private boolean flywheelSpinning = false;
     private DcMotor intakeMotor;
+    private boolean intaking = false;
 
     private CRServo chamberSpinner;
     public Servo artifactTransfer;
@@ -78,15 +80,19 @@ public class drive extends LinearOpMode {
 
                 if (gamepad1.dpad_up){
                     intakeMotor.setPower(intakeSpeed);
+                    intaking = true;
                 }
                 if (gamepad1.dpad_down){
                     intakeMotor.setPower(0);
+                    intaking = false;
                 }
                 if(gamepad1.x){
                     flywheelMotor.setPower(flywheelSpeed);
+                    flywheelSpinning = true;
                 }
                 if(gamepad1.xWasReleased()){
                     flywheelMotor.setPower(0);
+                    flywheelSpinning = false;
                 }
                 if(gamepad1.y){
                     artifactTransfer.setPosition(0.5);
@@ -142,6 +148,9 @@ public class drive extends LinearOpMode {
                 telemetry.addData("x", gamepad1.left_stick_x);
                 telemetry.addData("y", gamepad1.left_stick_y);
                 telemetry.addData("rx", gamepad1.right_stick_x);
+                telemetry.addLine();
+                telemetry.addData("Intaking", intaking);
+                telemetry.addData("Flywheeling", flywheelSpinning);
                 telemetry.addData("Chamber Stepping", stepping);
                 telemetry.addData("Direction", isReversing ? "Reverse" : "Forward");
                 telemetry.update();
