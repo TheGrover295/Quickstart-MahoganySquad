@@ -2,32 +2,39 @@ package org.firstinspires.ftc.teamcode.pedroPathing.teleop;
 
 import com.qualcomm.robotcore.eventloop.opmode.LinearOpMode;
 import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
+import com.qualcomm.robotcore.hardware.CRServo;
 import com.qualcomm.robotcore.hardware.DcMotor;
 import com.qualcomm.robotcore.hardware.DcMotorSimple;
 import com.qualcomm.robotcore.hardware.Servo;
+import com.qualcomm.robotcore.util.ElapsedTime;
 
 @TeleOp(name = "drive")
 public class drive extends LinearOpMode {
 
+    private DcMotor rightFront;
+    private DcMotor rightBack;
+    private DcMotor leftBack;
+    private DcMotor leftFront;
+    private DcMotor flywheelMotor;
+    private DcMotor intakeMotor;
 
-        private DcMotor rightFront;
-        private DcMotor rightBack;
-        private DcMotor leftBack;
-        private DcMotor leftFront;//skib
-        private DcMotor flywheelMotor;
-        private DcMotor intakeMotor;
-        private Servo chamberSpinner;
+    // Changed to CRServo to support the timed "step" rotation
+    private CRServo chamberSpinner;
+    public Servo artifactTransfer;
 
-        public Servo artifactTransfer;
+    static final double MAX_DEGREES = 360;
+    static final double MIN_POS = 0;
+    static final double MAX_POS = 1.0;
 
+    double currentPos = 0.0;
 
-        static final double MAX_DEGREES = 360;
-        static final double MIN_POS = 0; // reprogram servo to be at diffrent 0 pos
-        static final double MAX_POS = 1.0;
-
-        double currentPos = 0.0;
-        boolean prevDpadLeft = false;
-
+    // --- AXON / CHAMBER LOGIC VARIABLES ---
+    private double stepPower = 0.8;
+    private long stepMs = 162;
+    private boolean stepping = false;
+    private boolean lastB = false;
+    private final ElapsedTime stepTimer = new ElapsedTime();
+    // ---------------------------------------
 
     @Override
     public void runOpMode() {
@@ -37,8 +44,6 @@ public class drive extends LinearOpMode {
         double rz;
         double flywheelSpeed;
         double intakeSpeed;
-        double chamberSpeed;
-
 
         rightFront = hardwareMap.get(DcMotor.class, "rightFront");
         rightBack = hardwareMap.get(DcMotor.class, "rightBack");
@@ -47,21 +52,19 @@ public class drive extends LinearOpMode {
         flywheelMotor = hardwareMap.get(DcMotor.class, "flywheel");
         intakeMotor = hardwareMap.get(DcMotor.class, "intakeMotor");
 
-        chamberSpinner = hardwareMap.get(Servo.class, "chamberSpinner");
+        // Initialize as CRServo
+        chamberSpinner = hardwareMap.get(CRServo.class, "chamberSpinner");
         artifactTransfer = hardwareMap.get(Servo.class, "artifactTransfer");
-        //artifactTransfer.setPosition(MIN_POS);
+
         currentPos = MIN_POS;
 
-        // Put initialization blocks here.
         flywheelMotor.setDirection(DcMotorSimple.Direction.REVERSE);
         intakeMotor.setDirection(DcMotorSimple.Direction.REVERSE);
         leftBack.setDirection(DcMotor.Direction.REVERSE);
         leftFront.setDirection(DcMotor.Direction.REVERSE);
 
-
         waitForStart();
         if (opModeIsActive()) {
-            // Put run blocks here.
             while (opModeIsActive()) {
 
                 speed = 1;
@@ -70,45 +73,32 @@ public class drive extends LinearOpMode {
                 rz = Math.pow(gamepad1.right_stick_x, 3);
                 flywheelSpeed = 1;
                 intakeSpeed = 1;
-                //flywheelMotor.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
+
                 if (gamepad1.dpad_up){
                     intakeMotor.setPower(intakeSpeed);
                 }
                 if (gamepad1.dpad_down){
                     intakeMotor.setPower(0);
                 }
-                //if (gamepad1.dpad_left){
-
-                    //intakeMotor.setPower(intakeSpeed);
-                    //chamberSpinner.setDirection(Servo.Direction.REVERSE);
-                    //chamberSpinner.setPosition(0.5);
-                    //sleep(3000);
-                    //chamberSpinner.setDirection(Servo.Direction.REVERSE);
-                    //chamberSpinner.setPosition(1);
-                    //chamberSpinner.setPosition(0.2);
-
-                //}
-
-                boolean currentDpadLeft = gamepad1.dpad_left;
 
 
-                // run once per press (rising edge)
-                if (currentDpadLeft && !prevDpadLeft) {
-                    // advance by one third of the range
-                    double step = (MAX_POS - MIN_POS) / 3.0;
-                    currentPos += step;
+                boolean b = gamepad1.b;
+                boolean bPressed = b && !lastB;
 
-                    // wrap around after full revolution
-                    if (currentPos > MAX_POS) {
-                        currentPos = MIN_POS;
-                    }
+                if (bPressed && !stepping) {
+                    stepping = true;
+                    stepTimer.reset();
+                    chamberSpinner.setPower(stepPower);
 
-                    chamberSpinner.setDirection(Servo.Direction.REVERSE);
-                    chamberSpinner.setPosition(currentPos);
+                    flywheelMotor.setPower(flywheelSpeed);
                 }
 
-                // remember for next loop
-                prevDpadLeft = currentDpadLeft;
+                if (stepping && stepTimer.milliseconds() >= stepMs) {
+                    chamberSpinner.setPower(0);
+                    stepping = false;
+                }
+                lastB = b;
+
 
                 if (gamepad1.a) {
                     moveServoByDegrees(0.5);
@@ -116,29 +106,27 @@ public class drive extends LinearOpMode {
                 if (gamepad1.y) {
                     artifactTransfer.setPosition(-0.5);
                 }
-                if (gamepad1.b)
-                {
-                    flywheelMotor.setPower(flywheelSpeed);
-                }
                 if (gamepad1.x)
                 {
                     flywheelMotor.setPower(0);
                 }
+
                 // drive code
                 leftBack.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
                 leftFront.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
                 rightBack.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
                 rightFront.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
-                // drive code
+
                 leftBack.setPower(((y - x) + rz) * speed);
                 leftFront.setPower((y + x + rz) * speed);
                 rightBack.setPower(((y + x) - rz) * speed);
                 rightFront.setPower(((y - x) - rz) * speed);
+
                 // telemetry
                 telemetry.addData("x", gamepad1.left_stick_x);
                 telemetry.addData("y", gamepad1.left_stick_y);
                 telemetry.addData("rx", gamepad1.right_stick_x);
-                telemetry.addData("Axon Pos", chamberSpinner.getPosition());
+                telemetry.addData("Chamber Stepping", stepping);
                 telemetry.addData("Servo Position", artifactTransfer.getPosition());
 
                 telemetry.update();
@@ -147,14 +135,11 @@ public class drive extends LinearOpMode {
     }
 
     public void moveServoByDegrees(double degrees){
-        chamberSpinner.setDirection(Servo.Direction.REVERSE);
+        // Note: artifactTransfer is still a standard Servo
         double positionChange = degrees / MAX_DEGREES;
         double newPosition = currentPos + positionChange;
-
         newPosition = Math.max(MIN_POS, Math.min(MAX_POS, newPosition));
-
-        chamberSpinner.setPosition(newPosition);
+        artifactTransfer.setPosition(newPosition);
         currentPos = newPosition;
     }
 }
-
