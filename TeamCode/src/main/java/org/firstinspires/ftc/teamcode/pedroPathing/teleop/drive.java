@@ -139,6 +139,9 @@ public class drive extends LinearOpMode {
                 rightFront.setPower(((y - x) - rz) * speed);
 
                 // telemetry
+                telemetry.addData("x", gamepad1.left_stick_x);
+                telemetry.addData("y", gamepad1.left_stick_y);
+                telemetry.addData("rx", gamepad1.right_stick_x);
                 telemetry.addData("Chamber Stepping", stepping);
                 telemetry.addData("Direction", isReversing ? "Reverse" : "Forward");
                 telemetry.update();
