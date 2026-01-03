@@ -18,7 +18,6 @@ public class drive extends LinearOpMode {
     private DcMotor flywheelMotor;
     private DcMotor intakeMotor;
 
-    // Changed to CRServo to support the timed "step" rotation
     private CRServo chamberSpinner;
     public Servo artifactTransfer;
 
@@ -30,11 +29,15 @@ public class drive extends LinearOpMode {
 
     // --- AXON / CHAMBER LOGIC VARIABLES ---
     private double stepPower = 0.8;
+    private double reverseStepPower = -0.8;
     private long stepMs = 162;
+    private long ReversestepMs = 162; // This is now used for Button A
     private boolean stepping = false;
+    private boolean isReversing = false; // Added to track which duration to use
     private boolean lastB = false;
+    private boolean lastA = false;
     private final ElapsedTime stepTimer = new ElapsedTime();
-    // ---------------------------------------
+// ---------------------------------------
 
     @Override
     public void runOpMode() {
@@ -52,7 +55,6 @@ public class drive extends LinearOpMode {
         flywheelMotor = hardwareMap.get(DcMotor.class, "flywheel");
         intakeMotor = hardwareMap.get(DcMotor.class, "intakeMotor");
 
-        // Initialize as CRServo
         chamberSpinner = hardwareMap.get(CRServo.class, "chamberSpinner");
         artifactTransfer = hardwareMap.get(Servo.class, "artifactTransfer");
 
@@ -80,36 +82,50 @@ public class drive extends LinearOpMode {
                 if (gamepad1.dpad_down){
                     intakeMotor.setPower(0);
                 }
+                if(gamepad1.x){
+                    flywheelMotor.setPower(flywheelSpeed);
+                }
+                if(gamepad1.xWasReleased()){
+                    flywheelMotor.setPower(0);
+                }
+                if(gamepad1.y){
+                    artifactTransfer.setPosition(0.5);
+                }
 
 
+                // -----------
                 boolean b = gamepad1.b;
-                boolean bPressed = b && !lastB;
+                boolean a = gamepad1.a;
 
-                if (bPressed && !stepping) {
+                // Start Forward Step (B)
+                if (b && !lastB && !stepping) {
                     stepping = true;
+                    isReversing = false; // Standard step
                     stepTimer.reset();
                     chamberSpinner.setPower(stepPower);
-
                     flywheelMotor.setPower(flywheelSpeed);
                 }
 
-                if (stepping && stepTimer.milliseconds() >= stepMs) {
-                    chamberSpinner.setPower(0);
-                    stepping = false;
+                // Start Reverse Step (A)
+                if (a && !lastA && !stepping) {
+                    stepping = true;
+                    isReversing = true; // Reverse step
+                    stepTimer.reset();
+                    chamberSpinner.setPower(reverseStepPower);
                 }
+
+                // logic to stop the servo based on direction
+                if (stepping) {
+                    long targetMs = isReversing ? ReversestepMs : stepMs;
+                    if (stepTimer.milliseconds() >= targetMs) {
+                        chamberSpinner.setPower(0);
+                        stepping = false;
+                    }
+                }
+
                 lastB = b;
-
-
-                if (gamepad1.a) {
-                    moveServoByDegrees(0.5);
-                }
-                if (gamepad1.y) {
-                    artifactTransfer.setPosition(-0.5);
-                }
-                if (gamepad1.x)
-                {
-                    flywheelMotor.setPower(0);
-                }
+                lastA = a;
+                // ----------------------
 
                 // drive code
                 leftBack.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
@@ -123,19 +139,14 @@ public class drive extends LinearOpMode {
                 rightFront.setPower(((y - x) - rz) * speed);
 
                 // telemetry
-                telemetry.addData("x", gamepad1.left_stick_x);
-                telemetry.addData("y", gamepad1.left_stick_y);
-                telemetry.addData("rx", gamepad1.right_stick_x);
                 telemetry.addData("Chamber Stepping", stepping);
-                telemetry.addData("Servo Position", artifactTransfer.getPosition());
-
+                telemetry.addData("Direction", isReversing ? "Reverse" : "Forward");
                 telemetry.update();
             }
         }
     }
 
     public void moveServoByDegrees(double degrees){
-        // Note: artifactTransfer is still a standard Servo
         double positionChange = degrees / MAX_DEGREES;
         double newPosition = currentPos + positionChange;
         newPosition = Math.max(MIN_POS, Math.min(MAX_POS, newPosition));
