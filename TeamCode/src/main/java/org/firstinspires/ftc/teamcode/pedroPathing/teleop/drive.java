@@ -10,7 +10,7 @@ import com.qualcomm.robotcore.util.ElapsedTime;
 import com.arcrobotics.ftclib.gamepad.GamepadEx;
 import com.arcrobotics.ftclib.gamepad.GamepadKeys;
 
-@TeleOp(name = "Drive with Slow Mode")
+@TeleOp(name = "drive")
 public class drive extends LinearOpMode {
 
     private DcMotor rightFront, rightBack, leftBack, leftFront;
