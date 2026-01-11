@@ -13,17 +13,17 @@ import org.firstinspires.ftc.robotcore.external.navigation.Pose3D;
 import org.firstinspires.ftc.teamcode.pedroPathing.Constants;
 
 @Configurable
-@Autonomous(name = "Test Auto 1", group = "Examples")
-public class TestAutoV3 extends OpMode {
+@Autonomous(name = "Striaght Auto", group = "Examples")
+public class Straight extends OpMode {
 
     private Follower follower;
     private int pathState;
 
     // POSES -------------------------------------------------------------
 
-    private final Pose startPose = new Pose(56, 8, Math.toRadians(270));
+    private final Pose startPose = new Pose(79.73094170403586, 8.6457399103139, Math.toRadians(90));
 
-    private final Pose shootPose = new Pose(59.5, 85, Math.toRadians(320));
+    private final Pose shootPose = new Pose(79.85201793721973, 35.64125560538115, Math.toRadians(90));
 
     private PathChain gotoShootPose;
 

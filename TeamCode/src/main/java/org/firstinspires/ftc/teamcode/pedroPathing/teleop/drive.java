@@ -4,11 +4,13 @@ import com.qualcomm.robotcore.eventloop.opmode.LinearOpMode;
 import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
 import com.qualcomm.robotcore.hardware.DcMotor;
 import com.qualcomm.robotcore.hardware.DcMotorSimple;
+import com.qualcomm.robotcore.hardware.Gamepad;
 import com.qualcomm.robotcore.hardware.Servo;
+import com.qualcomm.robotcore.util.ElapsedTime;
 import com.arcrobotics.ftclib.gamepad.GamepadEx;
 import com.arcrobotics.ftclib.gamepad.GamepadKeys;
 
-@TeleOp(name = "drive")
+@TeleOp(name = "Drive with Slow Mode")
 public class drive extends LinearOpMode {
 
     private DcMotor rightFront, rightBack, leftBack, leftFront;
@@ -21,156 +23,158 @@ public class drive extends LinearOpMode {
     private boolean intaking = false;
     private double intakeSpeed = 1;
 
+    // Slow Mode Variables
+    private boolean slowMode = false;
+    private double speedMultiplier = 1.0;
+
     // Stepper Variables
     private double chamberTargetPos = 0;
-    private double ticksPerStep = 475.06; // The "Third" of a rotation
+    private double ticksPerStep = 475.06;
+    private double tinyReverseTicks = 100.0;
+    private double superReverseTicks = 30.0;
+
+    // Servo Constants
+    private final double SERVO_REST = 0.55;
+    private final double SERVO_PUSH = 0.7;
 
     // Button State Trackers
     private boolean lastA = false;
     private boolean lastB = false;
+    private boolean lastY = false;
+    private boolean lastX = false;
+
+    // Macro Variables
+    private ElapsedTime macroTimer = new ElapsedTime();
+    private int macroState = 0;
+    private ElapsedTime shootTimer = new ElapsedTime();
+    private int shootState = 0;
+    private int shotsFired = 0;
+
+    private GamepadEx operatorOp;
+    private GamepadEx driverOp;
 
     @Override
     public void runOpMode() {
-        GamepadEx driverOp = new GamepadEx(gamepad1);
+        driverOp = new GamepadEx(gamepad1);
+        operatorOp = new GamepadEx(gamepad2);
 
-        double speed;
         double x, y, rz;
 
-        // ------------------
         // 1. Hardware Map
-        // ------------------
         rightFront = hardwareMap.get(DcMotor.class, "rightFront");
         rightBack = hardwareMap.get(DcMotor.class, "rightBack");
         leftBack = hardwareMap.get(DcMotor.class, "leftBack");
         leftFront = hardwareMap.get(DcMotor.class, "leftFront");
         flywheelMotor = hardwareMap.get(DcMotor.class, "flywheel");
         intakeMotor = hardwareMap.get(DcMotor.class, "intakeMotor");
-
         chamberSpinner = hardwareMap.get(DcMotor.class, "chamberSpinner");
-        artifactTransfer = hardwareMap.get(Servo.class, "artifactTransfer");
+        artifactTransfer = hardwareMap.get(Servo.class, "ATM");
 
-        // ------------------
         // 2. Motor Directions
-        // ------------------
         flywheelMotor.setDirection(DcMotorSimple.Direction.REVERSE);
         intakeMotor.setDirection(DcMotorSimple.Direction.REVERSE);
         leftBack.setDirection(DcMotor.Direction.REVERSE);
         leftFront.setDirection(DcMotor.Direction.REVERSE);
         chamberSpinner.setDirection(DcMotorSimple.Direction.REVERSE);
 
-        // OPTIONAL: If the chamber spinner goes the wrong way, uncomment the line below:
-        // chamberSpinner.setDirection(DcMotorSimple.Direction.REVERSE);
-
-        // ------------------
-        // 3. Zero Power Behaviors (Brakes)
-        // ------------------
+        // 3. Zero Power Behaviors
         leftBack.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
         leftFront.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
         rightBack.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
         rightFront.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
         flywheelMotor.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
 
-        // ------------------
-        // 4. Chamber Spinner Setup (Critical for avoiding infinite spin)
-        // ------------------
+        // 4. Chamber Setup
         chamberSpinner.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
         chamberSpinner.setTargetPosition(0);
         chamberSpinner.setMode(DcMotor.RunMode.RUN_TO_POSITION);
-        chamberSpinner.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
-
-        // SAFETY: Set power to 0.5 initially so it doesn't spin too fast if broken
         chamberSpinner.setPower(0.5);
 
         telemetry.addLine("Ready.");
-        telemetry.addLine("If Motor Spins Forever: Check Encoder Cable!");
         telemetry.update();
-        gamepad1.setLedColor(32, 225, 0, 9000);
 
         waitForStart();
 
         while (opModeIsActive()) {
             driverOp.readButtons();
+            operatorOp.readButtons();
 
-            // Drive Controls
-            speed = 1;
+            // --- SLOW MODE TOGGLE (DPAD DOWN) ---
+            if (driverOp.wasJustPressed(GamepadKeys.Button.DPAD_DOWN)) {
+                slowMode = !slowMode;
+                if (slowMode) {
+                    speedMultiplier = 0.25; // 40% speed for precision
+                    gamepad1.rumble(200);
+                    gamepad1.setLedColor(0, 255, 0, Gamepad.LED_DURATION_CONTINUOUS);
+                } else {
+                    speedMultiplier = 1.0; // 100% speed
+                    gamepad1.rumble(100);
+                    gamepad1.setLedColor(255, 0, 0, 1000); // Flash red then off
+                }
+            }
+
+            // Drive Input
             x = Math.pow(gamepad1.left_stick_x, 3);
             y = -Math.pow(gamepad1.left_stick_y, 3);
             rz = Math.pow(gamepad1.right_stick_x, 3);
 
-            // ------------------
-            // Flywheel Logic
-            if (gamepad1.right_bumper) {
-                flywheelMotor.setPower(1);
-                gamepad1.rumble(150);
-                gamepad1.setLedColor(255, 0, 0, 9000);
+            // --- Flywheel Logic ---
+            if (gamepad2.right_bumper && shootState == 0) {
+                flywheelMotor.setPower(0.63);
+            } else if (shootState == 0) {
+                flywheelMotor.setPower(0);
             }
 
-            // ------------------
-            // Intake Logic
-            if (driverOp.wasJustPressed(GamepadKeys.Button.LEFT_BUMPER)) {
+            // --- Intake Logic ---
+            if (operatorOp.wasJustPressed(GamepadKeys.Button.LEFT_BUMPER)) {
                 intaking = !intaking;
-                if (intaking) {
-                    intakeMotor.setPower(intakeSpeed);
-                    gamepad1.rumble(150);
-                    gamepad1.setLedColor(0, 255, 0, 9000);
-                } else {
-                    intakeMotor.setPower(0);
-                }
+                intakeMotor.setPower(intaking ? intakeSpeed : 0);
             }
 
-            // ------------------
-            // Artifact Transfer Logic
-            if (gamepad1.dpad_right) {
+            // --- ATM / Servo Logic ---
+            boolean triggerPressed = gamepad1.right_trigger > 0.1;
+            boolean dpadRightPressed = gamepad1.dpad_right;
+
+            if ((triggerPressed || dpadRightPressed) && shootState == 0) {
                 artifactTransfer.setDirection(Servo.Direction.REVERSE);
-                artifactTransfer.setPosition(0.7);
-                gamepad1.setLedColor(0, 255, 0, 3000);
+                artifactTransfer.setPosition(SERVO_PUSH);
+            } else if (shootState == 0) {
+                artifactTransfer.setDirection(Servo.Direction.FORWARD);
+                artifactTransfer.setPosition(SERVO_REST);
             }
 
-            // ==========================================
-            // CHAMBER SPINNER LOGIC
-            // ==========================================
-            boolean a = gamepad1.a;
-            boolean b = gamepad1.b;
+            // --- Chamber Manual Overrides (Gamepad 2) ---
+            if (gamepad2.a && !lastA) moveChamberStep();
+            if (gamepad2.b && !lastB) { chamberTargetPos += tinyReverseTicks; updateChamber(); }
+            if (gamepad2.y && !lastY) { chamberTargetPos -= 100; updateChamber(); }
+            if (gamepad2.x && !lastX) { chamberTargetPos += superReverseTicks; updateChamber(); }
 
-            if (a && !lastA) {
-                chamberTargetPos += ticksPerStep;
-                chamberSpinner.setTargetPosition((int) chamberTargetPos);
-                chamberSpinner.setMode(DcMotor.RunMode.RUN_TO_POSITION);
-                chamberSpinner.setPower(1);
-                gamepad1.rumble(200);
-                gamepad1.setLedColor(0, 255, 0, 200);
-            }
+            lastA = gamepad2.a; lastB = gamepad2.b; lastY = gamepad2.y; lastX = gamepad2.x;
 
-            if (b && !lastB) {
-                int currentPos = chamberSpinner.getCurrentPosition();
-                chamberTargetPos = currentPos;
-                chamberSpinner.setTargetPosition(currentPos);
-                gamepad1.rumble(500);
-            }
+            // --- Final Drive Power (Applied Multiplier) ---
+            leftBack.setPower(((y - x) + rz) * speedMultiplier);
+            leftFront.setPower((y + x + rz) * speedMultiplier);
+            rightBack.setPower(((y + x) - rz) * speedMultiplier);
+            rightFront.setPower(((y - x) - rz) * speedMultiplier);
 
-            lastA = a;
-            lastB = b;
-            // ==========================================
-
-            // Drive Power Calculation
-            leftBack.setPower(((y - x) + rz) * speed);
-            leftFront.setPower((y + x + rz) * speed);
-            rightBack.setPower(((y + x) - rz) * speed);
-            rightFront.setPower(((y - x) - rz) * speed);
-
-            // Telemetry for Debugging
-            telemetry.addData("x", gamepad1.left_stick_x);
-            telemetry.addData("y", gamepad1.left_stick_y);
-            telemetry.addData("rx", gamepad1.right_stick_x);
-            telemetry.addLine("--- STATUSES ---");
+            // Telemetry
+            telemetry.addData("DRIVE MODE", slowMode ? "SLOW (40%)" : "FULL POWER");
+            telemetry.addData("Speed Multiplier", speedMultiplier);
             telemetry.addData("Intaking", intaking);
-            telemetry.addData("Flywheel", flywheelSpinning);
-            telemetry.addLine("--- CHAMBER DEBUG ---");
-            telemetry.addData("Target Position", (int)chamberTargetPos);
-            telemetry.addData("Current Position", chamberSpinner.getCurrentPosition());
-
-
             telemetry.update();
         }
+    }
+
+    private void moveChamberStep() {
+        chamberTargetPos += ticksPerStep;
+        chamberSpinner.setTargetPosition((int) chamberTargetPos);
+        chamberSpinner.setMode(DcMotor.RunMode.RUN_TO_POSITION);
+        chamberSpinner.setPower(0.6);
+    }
+
+    private void updateChamber() {
+        chamberSpinner.setTargetPosition((int) chamberTargetPos);
+        chamberSpinner.setMode(DcMotor.RunMode.RUN_TO_POSITION);
+        chamberSpinner.setPower(0.5);
     }
 }
