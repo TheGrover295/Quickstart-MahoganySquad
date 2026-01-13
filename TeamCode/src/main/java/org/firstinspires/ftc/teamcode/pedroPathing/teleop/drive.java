@@ -100,7 +100,7 @@ public class drive extends LinearOpMode {
             operatorOp.readButtons();
 
             // --- SLOW MODE TOGGLE (DPAD DOWN) ---
-            if (driverOp.wasJustPressed(GamepadKeys.Button.DPAD_DOWN)) {
+            if (driverOp.wasJustPressed(GamepadKeys.Button.RIGHT_STICK_BUTTON)) {
                 slowMode = !slowMode;
                 if (slowMode) {
                     speedMultiplier = 0.25; // 40% speed for precision
@@ -121,14 +121,19 @@ public class drive extends LinearOpMode {
             // --- Flywheel Logic ---
             if (gamepad2.right_bumper && shootState == 0) {
                 flywheelMotor.setPower(0.63);
+                gamepad2.rumble(200);
+                gamepad1.setLedColor(255, 0, 0, Gamepad.LED_DURATION_CONTINUOUS);
             } else if (shootState == 0) {
                 flywheelMotor.setPower(0);
+                gamepad2.rumble(150);
             }
 
             // --- Intake Logic ---
             if (operatorOp.wasJustPressed(GamepadKeys.Button.LEFT_BUMPER)) {
                 intaking = !intaking;
                 intakeMotor.setPower(intaking ? intakeSpeed : 0);
+                gamepad2.rumble(200);
+                gamepad1.setLedColor(255, 0, 0, Gamepad.LED_DURATION_CONTINUOUS);
             }
 
             // --- ATM / Servo Logic ---
@@ -138,16 +143,19 @@ public class drive extends LinearOpMode {
             if ((triggerPressed || dpadRightPressed) && shootState == 0) {
                 artifactTransfer.setDirection(Servo.Direction.REVERSE);
                 artifactTransfer.setPosition(SERVO_PUSH);
+                gamepad1.rumble(150);
+
             } else if (shootState == 0) {
                 artifactTransfer.setDirection(Servo.Direction.FORWARD);
                 artifactTransfer.setPosition(SERVO_REST);
+                gamepad1.rumble(50);
             }
 
             // --- Chamber Manual Overrides (Gamepad 2) ---
-            if (gamepad2.a && !lastA) moveChamberStep();
-            if (gamepad2.b && !lastB) { chamberTargetPos += tinyReverseTicks; updateChamber(); }
-            if (gamepad2.y && !lastY) { chamberTargetPos -= 100; updateChamber(); }
-            if (gamepad2.x && !lastX) { chamberTargetPos += superReverseTicks; updateChamber(); }
+            if (gamepad2.a && !lastA) moveChamberStep() ;
+            if (gamepad2.b && !lastB) { chamberTargetPos += tinyReverseTicks; updateChamber(); gamepad2.rumble(50);}
+            if (gamepad2.y && !lastY) { chamberTargetPos -= 100; updateChamber(); gamepad2.rumble(50);}
+            if (gamepad2.x && !lastX) { chamberTargetPos += superReverseTicks; updateChamber(); gamepad2.rumble(50); }
 
             lastA = gamepad2.a; lastB = gamepad2.b; lastY = gamepad2.y; lastX = gamepad2.x;
 
@@ -170,11 +178,15 @@ public class drive extends LinearOpMode {
         chamberSpinner.setTargetPosition((int) chamberTargetPos);
         chamberSpinner.setMode(DcMotor.RunMode.RUN_TO_POSITION);
         chamberSpinner.setPower(0.6);
+        gamepad2.rumble(50);
+        gamepad1.setLedColor(255, 0, 0, Gamepad.LED_DURATION_CONTINUOUS);
     }
 
     private void updateChamber() {
         chamberSpinner.setTargetPosition((int) chamberTargetPos);
         chamberSpinner.setMode(DcMotor.RunMode.RUN_TO_POSITION);
         chamberSpinner.setPower(0.5);
+        gamepad2.rumble(50);
+        gamepad1.setLedColor(255, 0, 0, Gamepad.LED_DURATION_CONTINUOUS);
     }
 }
