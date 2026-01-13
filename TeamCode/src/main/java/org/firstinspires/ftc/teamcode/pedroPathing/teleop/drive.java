@@ -153,9 +153,9 @@ public class drive extends LinearOpMode {
 
             // --- Chamber Manual Overrides (Gamepad 2) ---
             if (gamepad2.a && !lastA) moveChamberStep() ;
-            if (gamepad2.b && !lastB) { chamberTargetPos += tinyReverseTicks; updateChamber(); gamepad2.rumble(50);}
-            if (gamepad2.y && !lastY) { chamberTargetPos -= 100; updateChamber(); gamepad2.rumble(50);}
-            if (gamepad2.x && !lastX) { chamberTargetPos += superReverseTicks; updateChamber(); gamepad2.rumble(50); }
+            if (gamepad2.b && !lastB) { chamberTargetPos += tinyReverseTicks; updateChamber(); }
+            if (gamepad2.y && !lastY) { chamberTargetPos -= 100; updateChamber(); }
+            if (gamepad2.x && !lastX) { chamberTargetPos += superReverseTicks; updateChamber();  }
 
             lastA = gamepad2.a; lastB = gamepad2.b; lastY = gamepad2.y; lastX = gamepad2.x;
 
@@ -178,7 +178,7 @@ public class drive extends LinearOpMode {
         chamberSpinner.setTargetPosition((int) chamberTargetPos);
         chamberSpinner.setMode(DcMotor.RunMode.RUN_TO_POSITION);
         chamberSpinner.setPower(0.6);
-        gamepad2.rumble(50);
+
         gamepad1.setLedColor(255, 0, 0, Gamepad.LED_DURATION_CONTINUOUS);
     }
 
@@ -186,7 +186,7 @@ public class drive extends LinearOpMode {
         chamberSpinner.setTargetPosition((int) chamberTargetPos);
         chamberSpinner.setMode(DcMotor.RunMode.RUN_TO_POSITION);
         chamberSpinner.setPower(0.5);
-        gamepad2.rumble(50);
+
         gamepad1.setLedColor(255, 0, 0, Gamepad.LED_DURATION_CONTINUOUS);
     }
 }
