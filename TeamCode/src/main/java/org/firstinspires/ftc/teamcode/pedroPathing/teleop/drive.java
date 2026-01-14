@@ -108,7 +108,7 @@ public class drive extends LinearOpMode {
                     gamepad1.setLedColor(0, 255, 0, Gamepad.LED_DURATION_CONTINUOUS);
                 } else {
                     speedMultiplier = 1.0; // 100% speed
-                    gamepad1.rumble(100);
+                    //gamepad1.rumble(100);
                     gamepad1.setLedColor(255, 0, 0, 1000); // Flash red then off
                 }
             }
@@ -125,7 +125,7 @@ public class drive extends LinearOpMode {
                 gamepad1.setLedColor(255, 0, 0, Gamepad.LED_DURATION_CONTINUOUS);
             } else if (shootState == 0) {
                 flywheelMotor.setPower(0);
-                gamepad2.rumble(150);
+                //gamepad2.rumble(150);
             }
 
             // --- Intake Logic ---
@@ -148,7 +148,7 @@ public class drive extends LinearOpMode {
             } else if (shootState == 0) {
                 artifactTransfer.setDirection(Servo.Direction.FORWARD);
                 artifactTransfer.setPosition(SERVO_REST);
-                gamepad1.rumble(50);
+                //gamepad1.rumble(50);
             }
 
             // --- Chamber Manual Overrides (Gamepad 2) ---

@@ -14,8 +14,8 @@ import com.qualcomm.robotcore.util.ElapsedTime;
 import org.firstinspires.ftc.teamcode.pedroPathing.Constants;
 
 @Configurable
-@Autonomous(name = "Blue Goal Close", group = "AutoReal")
-public class BlueGoalClose extends OpMode {
+@Autonomous(name = "Blue Goal Far", group = "AutoReal")
+public class BlueGoalFar extends OpMode {
 
     private Follower follower;
     private ElapsedTime timer = new ElapsedTime();
@@ -37,8 +37,6 @@ public class BlueGoalClose extends OpMode {
 
     // Constants
     private final double TICKS_PER_STEP = 575.06;
-
-    private final double TICKS_SMALL_STEP = 100.0;
     private final double SERVO_REST = 0.55;
     private final double SERVO_PUSH = 0.7;
     private double chamberTargetPos = 0;
@@ -106,7 +104,6 @@ public class BlueGoalClose extends OpMode {
 
             case 3: // Rotate Chamber & Spool Flywheel
                 moveChamberStep();
-                moveChamberSmallStep();
                 setPathState(4);
                 break;
 
@@ -154,12 +151,6 @@ public class BlueGoalClose extends OpMode {
 
     private void moveChamberStep() {
         chamberTargetPos += TICKS_PER_STEP;
-        chamberSpinner.setTargetPosition((int) chamberTargetPos);
-        chamberSpinner.setPower(0.6);
-    }
-
-    private void moveChamberSmallStep() {
-        chamberTargetPos += TICKS_SMALL_STEP;
         chamberSpinner.setTargetPosition((int) chamberTargetPos);
         chamberSpinner.setPower(0.6);
     }
