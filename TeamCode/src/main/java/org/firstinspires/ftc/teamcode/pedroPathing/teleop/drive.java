@@ -2,10 +2,12 @@ package org.firstinspires.ftc.teamcode.pedroPathing.teleop;
 
 import com.qualcomm.robotcore.eventloop.opmode.LinearOpMode;
 import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
+import com.qualcomm.robotcore.hardware.CRServo;
 import com.qualcomm.robotcore.hardware.DcMotor;
 import com.qualcomm.robotcore.hardware.DcMotorSimple;
 import com.qualcomm.robotcore.hardware.Gamepad;
 import com.qualcomm.robotcore.hardware.Servo;
+import com.qualcomm.robotcore.hardware.CRServo;
 import com.qualcomm.robotcore.util.ElapsedTime;
 import com.arcrobotics.ftclib.gamepad.GamepadEx;
 import com.arcrobotics.ftclib.gamepad.GamepadKeys;
@@ -16,7 +18,7 @@ public class drive extends LinearOpMode {
     private DcMotor rightFront, rightBack, leftBack, leftFront;
     private DcMotor flywheelMotor, intakeMotor;
     private DcMotor chamberSpinner;
-    public Servo artifactTransfer;
+    public CRServo artifactTransfer;
 
     // Logic Variables
     private boolean flywheelSpinning = false;
@@ -29,9 +31,9 @@ public class drive extends LinearOpMode {
 
     // Stepper Variables
     private double chamberTargetPos = 0;
-    private double ticksPerStep = 475.06;
-    private double tinyReverseTicks = 100.0;
-    private double superReverseTicks = 30.0;
+    private double ticksPerStep = 475.06; //475.06
+    private double tinyReverseTicks = 100.0; //100
+    private double superReverseTicks = 30.0; //30
 
     // Servo Constants
     private final double SERVO_REST = 0.55;
@@ -68,7 +70,9 @@ public class drive extends LinearOpMode {
         flywheelMotor = hardwareMap.get(DcMotor.class, "flywheel");
         intakeMotor = hardwareMap.get(DcMotor.class, "intakeMotor");
         chamberSpinner = hardwareMap.get(DcMotor.class, "chamberSpinner");
-        artifactTransfer = hardwareMap.get(Servo.class, "ATM");
+
+        artifactTransfer = hardwareMap.get(CRServo.class, "ATM");
+
 
         // 2. Motor Directions
         flywheelMotor.setDirection(DcMotorSimple.Direction.REVERSE);
@@ -120,9 +124,9 @@ public class drive extends LinearOpMode {
 
             // --- Flywheel Logic ---
             if (gamepad2.right_bumper && shootState == 0) {
-                flywheelMotor.setPower(0.63);
+                flywheelMotor.setPower(0.75); //0.63
                 gamepad2.rumble(200);
-                gamepad1.setLedColor(255, 0, 0, Gamepad.LED_DURATION_CONTINUOUS);
+                gamepad1.setLedColor(255, 0, 255, Gamepad.LED_DURATION_CONTINUOUS);
             } else if (shootState == 0) {
                 flywheelMotor.setPower(0);
                 //gamepad2.rumble(150);
@@ -141,13 +145,17 @@ public class drive extends LinearOpMode {
             boolean dpadRightPressed = gamepad1.dpad_right;
 
             if ((triggerPressed || dpadRightPressed) && shootState == 0) {
-                artifactTransfer.setDirection(Servo.Direction.REVERSE);
-                artifactTransfer.setPosition(SERVO_PUSH);
+                artifactTransfer.setDirection(DcMotorSimple.Direction.REVERSE);
+                artifactTransfer.setPower(1);
+
+                //artifactTransfer.setDirection(Servo.Direction.REVERSE);
+                //artifactTransfer.setPosition(SERVO_PUSH);
                 gamepad1.rumble(150);
 
             } else if (shootState == 0) {
-                artifactTransfer.setDirection(Servo.Direction.FORWARD);
-                artifactTransfer.setPosition(SERVO_REST);
+                artifactTransfer.setPower(0);
+                //artifactTransfer.setDirection(Servo.Direction.FORWARD);
+                //artifactTransfer.setPosition(SERVO_REST);
                 //gamepad1.rumble(50);
             }
 
