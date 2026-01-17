@@ -10,6 +10,7 @@ import com.qualcomm.robotcore.eventloop.opmode.OpMode;
 import com.qualcomm.robotcore.hardware.DcMotor;
 import com.qualcomm.robotcore.hardware.DcMotorSimple;
 import com.qualcomm.robotcore.hardware.Servo;
+import com.qualcomm.robotcore.hardware.CRServo;
 import com.qualcomm.robotcore.util.ElapsedTime;
 import org.firstinspires.ftc.teamcode.pedroPathing.Constants;
 
@@ -25,7 +26,7 @@ public class BlueGoalClose extends OpMode {
 
     // Hardware
     private DcMotor flywheelMotor, chamberSpinner;
-    private Servo artifactTransfer;
+    private CRServo artifactTransfer;
 
     // Poses
     private final Pose startPose = new Pose(20.968, 122.296, Math.toRadians(325));
@@ -37,6 +38,7 @@ public class BlueGoalClose extends OpMode {
 
     // Constants
     private final double TICKS_PER_STEP = 575.06;
+    private final double FEEDER_SPIN_TIME = 0.5;
 
     private final double TICKS_SMALL_STEP = 100.0;
     private final double SERVO_REST = 0.55;
@@ -68,7 +70,7 @@ public class BlueGoalClose extends OpMode {
 
         flywheelMotor = hardwareMap.get(DcMotor.class, "flywheel");
         chamberSpinner = hardwareMap.get(DcMotor.class, "chamberSpinner");
-        artifactTransfer = hardwareMap.get(Servo.class, "ATM");
+        artifactTransfer = hardwareMap.get(CRServo.class, "ATM");
 
         flywheelMotor.setDirection(DcMotorSimple.Direction.REVERSE);
         chamberSpinner.setDirection(DcMotorSimple.Direction.REVERSE);
@@ -78,7 +80,7 @@ public class BlueGoalClose extends OpMode {
         chamberSpinner.setMode(DcMotor.RunMode.RUN_TO_POSITION);
         chamberSpinner.setPower(0.63);
 
-        artifactTransfer.setPosition(SERVO_REST);
+
 
         buildPaths();
     }
@@ -110,19 +112,18 @@ public class BlueGoalClose extends OpMode {
                 setPathState(4);
                 break;
 
-            case 4: // Wait for Chamber to settle
-                if (stateTimer.seconds() >= CHAMBER_WAIT) {
-                    artifactTransfer.setDirection(Servo.Direction.REVERSE);
-                    artifactTransfer.setPosition(SERVO_PUSH);
-                    setPathState(5);
-                }
-                break;
+            case 4: // Wait for Chamber to settle, then SPIN FEEDER
+            if (stateTimer.seconds() >= CHAMBER_WAIT) {
+                // Turn on spinner
+                artifactTransfer.setPower(1.0);
+                setPathState(5);
+            }
+            break;
 
-            case 5: // Manage the Push and Reset
-                // Retract servo after push time
-                if (stateTimer.seconds() >= ATM_PUSH_TIME) {
-                    artifactTransfer.setDirection(Servo.Direction.FORWARD);
-                    artifactTransfer.setPosition(SERVO_REST);
+            case 5: // Manage the Feed and Reset
+                // Stop spinning after set time
+                if (stateTimer.seconds() >= FEEDER_SPIN_TIME) {
+                    artifactTransfer.setPower(0);
                 }
 
                 // Check if the whole shot cycle is done
