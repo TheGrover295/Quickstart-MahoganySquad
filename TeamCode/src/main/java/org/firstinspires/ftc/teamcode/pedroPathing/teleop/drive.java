@@ -170,8 +170,8 @@ public class drive extends LinearOpMode {
             rightFront.setPower(frontRightPower * speedMultiplier);
             rightBack.setPower(backRightPower * speedMultiplier);
 
-            telemetry.addData("模式", "Field Centric");
-            telemetry.addData("车头朝向", String.format("%.2f 度", Math.toDegrees(botHeading)));
+            telemetry.addData("Mode", "Field Centric");
+            telemetry.addData("Heading", String.format("%.2f 度", Math.toDegrees(botHeading)));
             telemetry.update();
         }
     }
