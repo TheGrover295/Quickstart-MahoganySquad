@@ -1,56 +1,48 @@
 package org.firstinspires.ftc.teamcode.pedroPathing.teleop;
 
+import com.qualcomm.hardware.rev.RevHubOrientationOnRobot;
 import com.qualcomm.robotcore.eventloop.opmode.LinearOpMode;
 import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
 import com.qualcomm.robotcore.hardware.CRServo;
 import com.qualcomm.robotcore.hardware.DcMotor;
 import com.qualcomm.robotcore.hardware.DcMotorSimple;
-import com.qualcomm.robotcore.hardware.Gamepad;
-import com.qualcomm.robotcore.hardware.Servo;
-import com.qualcomm.robotcore.hardware.CRServo;
-import com.qualcomm.robotcore.util.ElapsedTime;
+import com.qualcomm.robotcore.hardware.IMU;
 import com.arcrobotics.ftclib.gamepad.GamepadEx;
 import com.arcrobotics.ftclib.gamepad.GamepadKeys;
+
+import com.skeletonarmy.marrow.TimerEx; 
+import org.firstinspires.ftc.robotcore.external.navigation.AngleUnit;
+import org.firstinspires.ftc.robotcore.external.navigation.YawPitchRollAngles;
+import java.util.concurrent.TimeUnit;
 
 @TeleOp(name = "drive")
 public class drive extends LinearOpMode {
 
+    // === 硬件定义 ===
     private DcMotor rightFront, rightBack, leftBack, leftFront;
     private DcMotor flywheelMotor, intakeMotor;
     private DcMotor chamberSpinner;
     public CRServo artifactTransfer;
+    private IMU imu;
 
-    // Logic Variables
-    private boolean flywheelSpinning = false;
+    // === Marrow 自动功能变量 ===
+    private TimerEx autoEjectTimer = new TimerEx(TimeUnit.MILLISECONDS);
+    private boolean isAutoEjecting = false;
+
+    // === 逻辑变量 ===
     private boolean intaking = false;
-    private double intakeSpeed = 1;
-
-    // Slow Mode Variables
+    private double intakeSpeed = 1.0;
     private boolean slowMode = false;
     private double speedMultiplier = 1.0;
 
-    // Stepper Variables
+    // === 步进电机变量 ===
     private double chamberTargetPos = 0;
-    private double ticksPerStep = 475.06; //475.06
-    private double tinyReverseTicks = 100.0; //100
-    private double superReverseTicks = 30.0; //30
+    private double ticksPerStep = 475.06;
+    private double tinyReverseTicks = 100.0;
+    private double superReverseTicks = 30.0;
 
-    // Servo Constants
-    private final double SERVO_REST = 0.55;
-    private final double SERVO_PUSH = 0.7;
-
-    // Button State Trackers
-    private boolean lastA = false;
-    private boolean lastB = false;
-    private boolean lastY = false;
-    private boolean lastX = false;
-
-    // Macro Variables
-    private ElapsedTime macroTimer = new ElapsedTime();
-    private int macroState = 0;
-    private ElapsedTime shootTimer = new ElapsedTime();
-    private int shootState = 0;
-    private int shotsFired = 0;
+    // === 按键状态记录 ===
+    private boolean lastA = false, lastB = false, lastY = false, lastX = false;
 
     private GamepadEx operatorOp;
     private GamepadEx driverOp;
@@ -60,9 +52,7 @@ public class drive extends LinearOpMode {
         driverOp = new GamepadEx(gamepad1);
         operatorOp = new GamepadEx(gamepad2);
 
-        double x, y, rz;
-
-        // 1. Hardware Map
+        // 1. 初始化马达
         rightFront = hardwareMap.get(DcMotor.class, "rightFront");
         rightBack = hardwareMap.get(DcMotor.class, "rightBack");
         leftBack = hardwareMap.get(DcMotor.class, "leftBack");
@@ -70,31 +60,36 @@ public class drive extends LinearOpMode {
         flywheelMotor = hardwareMap.get(DcMotor.class, "flywheel");
         intakeMotor = hardwareMap.get(DcMotor.class, "intakeMotor");
         chamberSpinner = hardwareMap.get(DcMotor.class, "chamberSpinner");
+        artifactTransfer = hardwareMap.get(CRServo.class, "artifactTransfer");
 
-        artifactTransfer = hardwareMap.get(CRServo.class, "ATM");
+        // 2. 初始化 IMU
+        imu = hardwareMap.get(IMU.class, "imu");
+        IMU.Parameters parameters = new IMU.Parameters(new RevHubOrientationOnRobot(
+                RevHubOrientationOnRobot.LogoFacingDirection.UP,
+                RevHubOrientationOnRobot.UsbFacingDirection.FORWARD));
+        imu.initialize(parameters);
 
-
-
+        // 3. 马达方向设置
         flywheelMotor.setDirection(DcMotorSimple.Direction.REVERSE);
         intakeMotor.setDirection(DcMotorSimple.Direction.REVERSE);
         leftBack.setDirection(DcMotor.Direction.REVERSE);
         leftFront.setDirection(DcMotor.Direction.REVERSE);
         chamberSpinner.setDirection(DcMotorSimple.Direction.REVERSE);
 
-
+        // 4. 设置刹车模式
         leftBack.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
         leftFront.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
         rightBack.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
         rightFront.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
         flywheelMotor.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
 
-
+        // 5. 步进电机初始设置
         chamberSpinner.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
         chamberSpinner.setTargetPosition(0);
         chamberSpinner.setMode(DcMotor.RunMode.RUN_TO_POSITION);
         chamberSpinner.setPower(0.5);
 
-        telemetry.addLine("Ready.");
+        telemetry.addLine("Ready. Spatial Awareness Active.");
         telemetry.update();
 
         waitForStart();
@@ -103,80 +98,80 @@ public class drive extends LinearOpMode {
             driverOp.readButtons();
             operatorOp.readButtons();
 
-
             if (driverOp.wasJustPressed(GamepadKeys.Button.RIGHT_STICK_BUTTON)) {
                 slowMode = !slowMode;
-                if (slowMode) {
-                    speedMultiplier = 0.25;
-                    gamepad1.rumble(200);
-                    gamepad1.setLedColor(0, 255, 0, Gamepad.LED_DURATION_CONTINUOUS);
-                } else {
-                    speedMultiplier = 1.0;
-                    //gamepad1.rumble(100);
-                    gamepad1.setLedColor(255, 0, 0, 1000);
-                }
+                speedMultiplier = slowMode ? 0.25 : 1.0;
+                if (slowMode) gamepad1.rumble(200);
             }
 
-            // Drive Input
-            x = Math.pow(gamepad1.left_stick_x, 3);
-            y = -Math.pow(gamepad1.left_stick_y, 3);
-            rz = Math.pow(gamepad1.right_stick_x, 3);
+            if (gamepad1.options) {
+                imu.resetYaw();
+                gamepad1.rumble(500);
+            }
 
+            // === 空间感知驾驶计算 (Field Centric) ===
+            double y = -gamepad1.left_stick_y;
+            double x = gamepad1.left_stick_x;
+            double rx = gamepad1.right_stick_x;
 
-            if (gamepad2.right_bumper && shootState == 0) {
-                flywheelMotor.setPower(0.75); //0.63
-                gamepad2.rumble(200);
-                gamepad1.setLedColor(255, 0, 255, Gamepad.LED_DURATION_CONTINUOUS);
-            } else if (shootState == 0) {
+            YawPitchRollAngles orientation = imu.getRobotYawPitchRollAngles();
+            double botHeading = orientation.getYaw(AngleUnit.RADIANS);
+
+            double rotX = x * Math.cos(-botHeading) - y * Math.sin(-botHeading);
+            double rotY = x * Math.sin(-botHeading) + y * Math.cos(-botHeading);
+            rotX = rotX * 1.1;
+
+            double denominator = Math.max(Math.abs(rotY) + Math.abs(rotX) + Math.abs(rx), 1);
+            double frontLeftPower = (rotY + rotX + rx) / denominator;
+            double backLeftPower = (rotY - rotX + rx) / denominator;
+            double frontRightPower = (rotY - rotX - rx) / denominator;
+            double backRightPower = (rotY + rotX - rx) / denominator;
+
+            // === 飞轮控制 ===
+            if (gamepad2.right_bumper) {
+                flywheelMotor.setPower(0.75);
+            } else {
                 flywheelMotor.setPower(0);
-                //gamepad2.rumble(150);
             }
 
-
+            // === 吸球控制 ===
             if (operatorOp.wasJustPressed(GamepadKeys.Button.LEFT_BUMPER)) {
                 intaking = !intaking;
                 intakeMotor.setPower(intaking ? intakeSpeed : 0);
-                gamepad2.rumble(200);
-                gamepad1.setLedColor(255, 0, 0, Gamepad.LED_DURATION_CONTINUOUS);
             }
 
-            // --- ATM / Servo Logic ---
-            boolean triggerPressed = gamepad1.right_trigger > 0.1;
-            boolean dpadRightPressed = gamepad1.dpad_right;
+            // === Marrow 自动吐球 ===
+            if (gamepad1.right_trigger > 0.1 && !isAutoEjecting) {
+                isAutoEjecting = true;
+                autoEjectTimer.start();
+                gamepad1.rumble(500);
+            }
 
-            if ((triggerPressed || dpadRightPressed) && shootState == 0) {
-                artifactTransfer.setDirection(DcMotorSimple.Direction.REVERSE);
-                artifactTransfer.setPower(1);
-
-                //artifactTransfer.setDirection(Servo.Direction.REVERSE);
-                //artifactTransfer.setPosition(SERVO_PUSH);
-                gamepad1.rumble(150);
-
-            } else if (shootState == 0) {
+            if (isAutoEjecting) {
+                artifactTransfer.setPower(1.0);
+                if (autoEjectTimer.getElapsed() > 1500) { 
+                    artifactTransfer.setPower(0);
+                    isAutoEjecting = false;
+                }
+            } else {
                 artifactTransfer.setPower(0);
-                //artifactTransfer.setDirection(Servo.Direction.FORWARD);
-                //artifactTransfer.setPosition(SERVO_REST);
-                //gamepad1.rumble(50);
             }
 
-
-            if (gamepad2.a && !lastA) moveChamberStep() ;
+            // === 腔室控制 ===
+            if (gamepad2.a && !lastA) moveChamberStep();
             if (gamepad2.b && !lastB) { chamberTargetPos += tinyReverseTicks; updateChamber(); }
             if (gamepad2.y && !lastY) { chamberTargetPos -= 100; updateChamber(); }
-            if (gamepad2.x && !lastX) { chamberTargetPos += superReverseTicks; updateChamber();  }
+            if (gamepad2.x && !lastX) { chamberTargetPos += superReverseTicks; updateChamber(); }
 
             lastA = gamepad2.a; lastB = gamepad2.b; lastY = gamepad2.y; lastX = gamepad2.x;
 
+            leftFront.setPower(frontLeftPower * speedMultiplier);
+            leftBack.setPower(backLeftPower * speedMultiplier);
+            rightFront.setPower(frontRightPower * speedMultiplier);
+            rightBack.setPower(backRightPower * speedMultiplier);
 
-            leftBack.setPower(((y - x) + rz) * speedMultiplier);
-            leftFront.setPower((y + x + rz) * speedMultiplier);
-            rightBack.setPower(((y + x) - rz) * speedMultiplier);
-            rightFront.setPower(((y - x) - rz) * speedMultiplier);
-
-            // Telemetry
-            telemetry.addData("DRIVE MODE", slowMode ? "SLOW (40%)" : "FULL POWER");
-            telemetry.addData("Speed Multiplier", speedMultiplier);
-            telemetry.addData("Intaking", intaking);
+            telemetry.addData("模式", "Field Centric");
+            telemetry.addData("车头朝向", String.format("%.2f 度", Math.toDegrees(botHeading)));
             telemetry.update();
         }
     }
@@ -186,15 +181,11 @@ public class drive extends LinearOpMode {
         chamberSpinner.setTargetPosition((int) chamberTargetPos);
         chamberSpinner.setMode(DcMotor.RunMode.RUN_TO_POSITION);
         chamberSpinner.setPower(0.6);
-
-        gamepad1.setLedColor(255, 0, 0, Gamepad.LED_DURATION_CONTINUOUS);
     }
 
     private void updateChamber() {
         chamberSpinner.setTargetPosition((int) chamberTargetPos);
         chamberSpinner.setMode(DcMotor.RunMode.RUN_TO_POSITION);
         chamberSpinner.setPower(0.5);
-
-        gamepad1.setLedColor(255, 0, 0, Gamepad.LED_DURATION_CONTINUOUS);
     }
 }

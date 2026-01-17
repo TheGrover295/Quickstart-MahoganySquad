@@ -18,6 +18,7 @@ apply from: '../build.dependencies.gradle'
 repositories {
     mavenCentral()
     google()
+    maven { url 'https://jitpack.io' }
 }
 
 android {
