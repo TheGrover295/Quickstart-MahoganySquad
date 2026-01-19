@@ -14,10 +14,10 @@ import com.qualcomm.robotcore.util.ElapsedTime;
 import org.firstinspires.ftc.teamcode.pedroPathing.Constants;
 
 @Configurable
-@Autonomous(name = "Blue Goal Close V2 ", group = "AutoReal")
+@Autonomous(name = "Blue Goal Close V2", group = "AutoReal")
 public class BlueGoalGloseV2 extends OpMode {
-
     private Follower follower;
+    private ElapsedTime timer = new ElapsedTime();
     private ElapsedTime stateTimer = new ElapsedTime();
     private int pathState = 0;
     private int totalShotsFired = 0;
@@ -28,121 +28,103 @@ public class BlueGoalGloseV2 extends OpMode {
 
     // Poses
     private final Pose startPose = new Pose(20.968, 122.296, Math.toRadians(325));
-    private final Pose shoot1 = new Pose(59.557, 83.869, Math.toRadians(310));
-    private final Pose preintake1 = new Pose(42.61883408071749, 83.94618834080718, Math.toRadians(180));
-    private final Pose intake1 = new Pose(23.99592376681614, 84.12156502242154, Math.toRadians(180)); //180
-    private final Pose shoot2 = new Pose(59.557, 83.869, Math.toRadians(310));
+    private final Pose shoot1 = new Pose(59.68609865470853, 84.11659192825114, Math.toRadians(325)); // 310
+    private final Pose intake1 = new Pose(44.717488789237656, 84.30044843049328);
 
     // Paths
-    private PathChain driveToShoot1, driveToIntake1, driveToBackup1, driveToShoot2;
+    private PathChain driveToShoot1, driveToIntake1;
 
     // Constants
-    private final double TICKS_PER_STEP = 575.06;
-    private final double TICKS_SMALL_STEP = 100.0;
-
+    private final double TICKS_PER_STEP = 490;
     private double chamberTargetPos = 0;
+    private final double INITIAL_WAIT = 0.9;
+    private final double CHAMBER_WAIT = 1.8;
 
-    // Timing
-    private final double INITIAL_WAIT = 0.5;
-    private final double CHAMBER_WAIT = 3.0; // Time allowed for chamber to rotate before feeding
-    private final double FEEDER_SPIN_TIME = 0.5; // How long the servo spins to push ring in
-    private final double TOTAL_SHOT_CYCLE = 1.5; // Total time per shot (must be > FEEDER_SPIN_TIME)
+    // --- UPDATED CONSTANTS ---
+    // Increase this time specifically for the first stiff shot
+    private final double ATM_PUSH_TIME_FIRST = 2.0;
+    // This is the normal time for shots 2 and 3
+    private final double ATM_PUSH_TIME_NORMAL = 0.9;
+    // Increased to prevent the loop from cutting off the longer first shot
+    private final double TOTAL_SHOT_CYCLE = 2.5;
+
 
     public void buildPaths() {
         driveToShoot1 = follower.pathBuilder()
                 .addPath(new BezierLine(startPose, shoot1))
                 .setLinearHeadingInterpolation(startPose.getHeading(), shoot1.getHeading())
                 .build();
-
         driveToIntake1 = follower.pathBuilder()
-                .addPath(new BezierLine(shoot1, preintake1))
-                .setConstantHeadingInterpolation(Math.toRadians(180))
+                .addPath(new BezierLine(shoot1, intake1))
+                .setTangentHeadingInterpolation()
                 .build();
-
-        driveToBackup1 = follower.pathBuilder()
-                .addPath(new BezierLine(preintake1, intake1))
-                .setLinearHeadingInterpolation(preintake1.getHeading(), intake1.getHeading())
-                .build();
-
-        driveToShoot2 = follower.pathBuilder()
-                .addPath(new BezierLine(intake1, shoot2))
-                .setLinearHeadingInterpolation(intake1.getHeading(), shoot2.getHeading())
-                .build();
-
-
     }
 
     @Override
     public void init() {
         follower = Constants.createFollower(hardwareMap);
         follower.setStartingPose(startPose);
-
         flywheelMotor = hardwareMap.get(DcMotor.class, "flywheel");
         chamberSpinner = hardwareMap.get(DcMotor.class, "chamberSpinner");
         artifactTransfer = hardwareMap.get(CRServo.class, "ATM");
-
         flywheelMotor.setDirection(DcMotorSimple.Direction.REVERSE);
         chamberSpinner.setDirection(DcMotorSimple.Direction.REVERSE);
-
         chamberSpinner.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
         chamberSpinner.setTargetPosition(0);
         chamberSpinner.setMode(DcMotor.RunMode.RUN_TO_POSITION);
         chamberSpinner.setPower(0.63);
-
-        // Make sure feeder is stopped
-        artifactTransfer.setPower(0);
-
         buildPaths();
     }
 
     public void autonomousPathUpdate() {
         switch (pathState) {
-            case 0: // Start driving to Shoot 1
+            case 0: // Start driving to Shoot
                 follower.followPath(driveToShoot1);
                 setPathState(1);
                 break;
-
-            case 1: // Wait for arrival at Shoot 1
+            case 1: // Wait for arrival
                 if (!follower.isBusy() && stateTimer.seconds() > 0.5) {
                     setPathState(2);
-                    flywheelMotor.setPower(0.67);
+                    flywheelMotor.setPower(0.64); //0.65
                 }
                 break;
-
             case 2: // Short pause before shooting
                 if (stateTimer.seconds() >= INITIAL_WAIT) {
                     setPathState(3);
                 }
                 break;
-
             case 3: // Rotate Chamber & Spool Flywheel
                 moveChamberStep();
-                moveChamberSmallStep();
                 setPathState(4);
                 break;
-
-            case 4: // Wait for Chamber to align, then start feeding
+            case 4: // Wait for Chamber to settle
                 if (stateTimer.seconds() >= CHAMBER_WAIT) {
-
-                    artifactTransfer.setPower(1.0);
+                    artifactTransfer.setDirection(DcMotorSimple.Direction.FORWARD);
+                    artifactTransfer.setPower(1);
                     setPathState(5);
                 }
                 break;
 
-            case 5: // Feed ring, Stop, Reset
+            case 5: // Manage the Push and Reset
+                // LOGIC UPDATE: Pick the correct time based on which shot we are on
+                double currentPushTime;
 
-                if (stateTimer.seconds() >= FEEDER_SPIN_TIME) {
+                if (totalShotsFired == 0) {
+                    currentPushTime = ATM_PUSH_TIME_FIRST;
+                } else {
+                    currentPushTime = ATM_PUSH_TIME_NORMAL;
+                }
+
+                // Stop the servo when the selected time is reached
+                if (stateTimer.seconds() >= currentPushTime) {
                     artifactTransfer.setPower(0);
                 }
 
-
+                // Check if the whole shot cycle is done
                 if (stateTimer.seconds() >= TOTAL_SHOT_CYCLE) {
-                    // Double check it's stopped
-                    artifactTransfer.setPower(0);
-
                     totalShotsFired++;
                     if (totalShotsFired < 3) {
-                        setPathState(3); // Loop back for next shot
+                        setPathState(3); // Go again
                     } else {
                         flywheelMotor.setPower(0);
                         follower.followPath(driveToIntake1);
@@ -151,39 +133,14 @@ public class BlueGoalGloseV2 extends OpMode {
                 }
                 break;
 
-            case 6: // Arriving at Intake
+            case 6: // Final parking check
                 if (!follower.isBusy() && stateTimer.seconds() > 0.5) {
-                    follower.followPath(driveToBackup1);
-                    setPathState(7);
+                    setPathState(-1);
                 }
-                break;
-
-            case 7: // Arriving at Backup
-                if (!follower.isBusy() && stateTimer.seconds() > 0.5) {
-                    follower.followPath(driveToShoot2);
-                    flywheelMotor.setPower(0.67); // Spin up early
-                    setPathState(8);
-                }
-                break;
-
-            case 8: // Driving to Shoot 2
-                if (!follower.isBusy() && stateTimer.seconds() > 0.5) {
-                    setPathState(9);
-                }
-                break;
-
-            case 9: // Settling at Shoot 2
-                if (stateTimer.seconds() >= INITIAL_WAIT) {
-                    totalShotsFired = 0; // Reset counter
-                    setPathState(10);
-                }
-                break;
-
-            case 10: // Restart Shooting Cycle
-                setPathState(3); // Jump back to shooting logic
                 break;
         }
     }
+
 
     private void setPathState(int state) {
         pathState = state;
@@ -193,26 +150,17 @@ public class BlueGoalGloseV2 extends OpMode {
     private void moveChamberStep() {
         chamberTargetPos += TICKS_PER_STEP;
         chamberSpinner.setTargetPosition((int) chamberTargetPos);
-        chamberSpinner.setPower(0.6);
-    }
-
-    private void moveChamberSmallStep() {
-        chamberTargetPos += TICKS_SMALL_STEP;
-        chamberSpinner.setTargetPosition((int) chamberTargetPos);
-        chamberSpinner.setPower(0.6);
+        chamberSpinner.setPower(0.72);
     }
 
     @Override
     public void loop() {
         follower.update();
         autonomousPathUpdate();
-
         telemetry.addData("State", pathState);
         telemetry.addData("Shots", totalShotsFired);
-        telemetry.addData("Busy", follower.isBusy());
         telemetry.update();
     }
-
     @Override
     public void start() {
         setPathState(0);
