@@ -7,9 +7,9 @@ import com.pedropathing.geometry.Pose;
 import com.pedropathing.paths.PathChain;
 import com.qualcomm.robotcore.eventloop.opmode.Autonomous;
 import com.qualcomm.robotcore.eventloop.opmode.OpMode;
+import com.qualcomm.robotcore.hardware.CRServo; // Changed from Servo
 import com.qualcomm.robotcore.hardware.DcMotor;
 import com.qualcomm.robotcore.hardware.DcMotorSimple;
-import com.qualcomm.robotcore.hardware.Servo;
 import com.qualcomm.robotcore.util.ElapsedTime;
 import org.firstinspires.ftc.teamcode.pedroPathing.Constants;
 
@@ -25,27 +25,29 @@ public class BlueGoalFar extends OpMode {
 
     // Hardware
     private DcMotor flywheelMotor, chamberSpinner;
-    private Servo artifactTransfer;
+    private CRServo artifactTransfer; // Changed to CRServo to match BlueGoalClose
 
     // Poses
-    private final Pose startPose = new Pose(20.968, 122.296, Math.toRadians(325));
-    private final Pose shootPose = new Pose(60.364, 82.578, Math.toRadians(310));
-    private final Pose parkPose = new Pose(44.498, 76.000, Math.toRadians(310));
+    private final Pose startPose = new Pose(85.05768609865473, 9.291515695067263, Math.toRadians(630));
+    private final Pose shootPose = new Pose(72.2780269058296, 22.77130044843051, Math.toRadians(303)); //300
+    private final Pose intake1Pose = new Pose(129.26905829596413, 12.09865470852018);
 
     // Paths
-    private PathChain driveToShoot, driveToPark;
+    private PathChain driveToShoot, driveToIntake;
 
     // Constants
-    private final double TICKS_PER_STEP = 575.06;
-    private final double SERVO_REST = 0.55;
-    private final double SERVO_PUSH = 0.7;
+    private final double TICKS_PER_STEP = 480; //490
     private double chamberTargetPos = 0;
+    private final double INITIAL_WAIT = 0.9;
+    private final double CHAMBER_WAIT = 1.9; //1.8
 
-    // Timing
-    private final double INITIAL_WAIT = 0.5;
-    private final double CHAMBER_WAIT = 3.0;
-    private final double ATM_PUSH_TIME = 0.7;
-    private final double TOTAL_SHOT_CYCLE = 2.0;
+    // --- UPDATED CONSTANTS ---
+    // Increase this time specifically for the first stiff shot
+    private final double ATM_PUSH_TIME_FIRST = 2.3;
+    // This is the normal time for shots 2 and 3
+    private final double ATM_PUSH_TIME_NORMAL = 0.9;
+    // Increased to prevent the loop from cutting off the longer first shot
+    private final double TOTAL_SHOT_CYCLE = 2.5;
 
     public void buildPaths() {
         driveToShoot = follower.pathBuilder()
@@ -53,9 +55,9 @@ public class BlueGoalFar extends OpMode {
                 .setLinearHeadingInterpolation(startPose.getHeading(), shootPose.getHeading())
                 .build();
 
-        driveToPark = follower.pathBuilder()
-                .addPath(new BezierLine(shootPose, parkPose))
-                .setLinearHeadingInterpolation(shootPose.getHeading(), parkPose.getHeading())
+        driveToIntake = follower.pathBuilder()
+                .addPath(new BezierLine(shootPose, intake1Pose))
+                .setLinearHeadingInterpolation(shootPose.getHeading(), intake1Pose.getHeading())
                 .build();
     }
 
@@ -66,7 +68,9 @@ public class BlueGoalFar extends OpMode {
 
         flywheelMotor = hardwareMap.get(DcMotor.class, "flywheel");
         chamberSpinner = hardwareMap.get(DcMotor.class, "chamberSpinner");
-        artifactTransfer = hardwareMap.get(Servo.class, "ATM");
+
+        // Updated hardware map for CRServo
+        artifactTransfer = hardwareMap.get(CRServo.class, "ATM");
 
         flywheelMotor.setDirection(DcMotorSimple.Direction.REVERSE);
         chamberSpinner.setDirection(DcMotorSimple.Direction.REVERSE);
@@ -75,8 +79,6 @@ public class BlueGoalFar extends OpMode {
         chamberSpinner.setTargetPosition(0);
         chamberSpinner.setMode(DcMotor.RunMode.RUN_TO_POSITION);
         chamberSpinner.setPower(0.63);
-
-        artifactTransfer.setPosition(SERVO_REST);
 
         buildPaths();
     }
@@ -92,7 +94,7 @@ public class BlueGoalFar extends OpMode {
                 // Added a small time buffer to ensure isBusy() has time to register
                 if (!follower.isBusy() && stateTimer.seconds() > 0.5) {
                     setPathState(2);
-                    flywheelMotor.setPower(0.67);
+                    flywheelMotor.setPower(0.77);
                 }
                 break;
 
@@ -109,17 +111,26 @@ public class BlueGoalFar extends OpMode {
 
             case 4: // Wait for Chamber to settle
                 if (stateTimer.seconds() >= CHAMBER_WAIT) {
-                    artifactTransfer.setDirection(Servo.Direction.REVERSE);
-                    artifactTransfer.setPosition(SERVO_PUSH);
+                    // CRServo Logic: Set Power/Direction instead of Position
+                    artifactTransfer.setDirection(DcMotorSimple.Direction.FORWARD);
+                    artifactTransfer.setPower(1);
                     setPathState(5);
                 }
                 break;
 
             case 5: // Manage the Push and Reset
-                // Retract servo after push time
-                if (stateTimer.seconds() >= ATM_PUSH_TIME) {
-                    artifactTransfer.setDirection(Servo.Direction.FORWARD);
-                    artifactTransfer.setPosition(SERVO_REST);
+                // LOGIC UPDATE: Pick the correct time based on which shot we are on
+                double currentPushTime;
+
+                if (totalShotsFired == 0) {
+                    currentPushTime = ATM_PUSH_TIME_FIRST;
+                } else {
+                    currentPushTime = ATM_PUSH_TIME_NORMAL;
+                }
+
+                // Stop the servo when the selected time is reached
+                if (stateTimer.seconds() >= currentPushTime) {
+                    artifactTransfer.setPower(0);
                 }
 
                 // Check if the whole shot cycle is done
@@ -129,7 +140,7 @@ public class BlueGoalFar extends OpMode {
                         setPathState(3); // Go again
                     } else {
                         flywheelMotor.setPower(0);
-                        follower.followPath(driveToPark);
+                        follower.followPath(driveToIntake);
                         setPathState(6);
                     }
                 }

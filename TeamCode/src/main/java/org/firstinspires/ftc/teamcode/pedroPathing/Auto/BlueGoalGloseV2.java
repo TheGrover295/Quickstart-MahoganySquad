@@ -3,6 +3,7 @@ package org.firstinspires.ftc.teamcode.pedroPathing.Auto;
 import com.bylazar.configurables.annotations.Configurable;
 import com.pedropathing.follower.Follower;
 import com.pedropathing.geometry.BezierLine;
+import com.pedropathing.geometry.BezierPoint;
 import com.pedropathing.geometry.Pose;
 import com.pedropathing.paths.PathChain;
 import com.qualcomm.robotcore.eventloop.opmode.Autonomous;
@@ -14,7 +15,7 @@ import com.qualcomm.robotcore.util.ElapsedTime;
 import org.firstinspires.ftc.teamcode.pedroPathing.Constants;
 
 @Configurable
-@Autonomous(name = "Blue Goal Close V2", group = "AutoReal")
+@Autonomous(name = "Blue Goal Close", group = "AutoReal")
 public class BlueGoalGloseV2 extends OpMode {
     private Follower follower;
     private ElapsedTime timer = new ElapsedTime();
@@ -28,11 +29,13 @@ public class BlueGoalGloseV2 extends OpMode {
 
     // Poses
     private final Pose startPose = new Pose(20.968, 122.296, Math.toRadians(325));
-    private final Pose shoot1 = new Pose(59.68609865470853, 84.11659192825114, Math.toRadians(325)); // 310
-    private final Pose intake1 = new Pose(44.717488789237656, 84.30044843049328);
+    private final Pose shoot1 = new Pose(59.68609865470853, 84.11659192825114, Math.toRadians(318)); // 320
+
+    //private final Pose turn1 = new Pose(59.68609865470853, 84.11659192825114);
+    private final Pose intake1 = new Pose(44.717488789237656, 84.30044843049328, Math.toRadians(180));
 
     // Paths
-    private PathChain driveToShoot1, driveToIntake1;
+    private PathChain driveToShoot1, driveToIntake1, drivetoTurn1;
 
     // Constants
     private final double TICKS_PER_STEP = 490;
@@ -42,7 +45,7 @@ public class BlueGoalGloseV2 extends OpMode {
 
     // --- UPDATED CONSTANTS ---
     // Increase this time specifically for the first stiff shot
-    private final double ATM_PUSH_TIME_FIRST = 2.0;
+    private final double ATM_PUSH_TIME_FIRST = 2.3; //2.0
     // This is the normal time for shots 2 and 3
     private final double ATM_PUSH_TIME_NORMAL = 0.9;
     // Increased to prevent the loop from cutting off the longer first shot
@@ -54,10 +57,22 @@ public class BlueGoalGloseV2 extends OpMode {
                 .addPath(new BezierLine(startPose, shoot1))
                 .setLinearHeadingInterpolation(startPose.getHeading(), shoot1.getHeading())
                 .build();
+        /*
+        drivetoTurn1 = follower.pathBuilder()
+                .addPath(new BezierPoint(turn1))
+                .setLinearHeadingInterpolation(shoot1.getHeading(), Math.toRadians(180))
+                .build();
+
+         */
+
         driveToIntake1 = follower.pathBuilder()
                 .addPath(new BezierLine(shoot1, intake1))
-                .setTangentHeadingInterpolation()
+                .setLinearHeadingInterpolation(shoot1.getHeading(), intake1.getHeading())
                 .build();
+
+
+
+
     }
 
     @Override
@@ -127,7 +142,7 @@ public class BlueGoalGloseV2 extends OpMode {
                         setPathState(3); // Go again
                     } else {
                         flywheelMotor.setPower(0);
-                        follower.followPath(driveToIntake1);
+                        follower.followPath(driveToIntake1); //intake1
                         setPathState(6);
                     }
                 }
