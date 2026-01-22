@@ -6,6 +6,7 @@ import com.qualcomm.robotcore.hardware.CRServo;
 import com.qualcomm.robotcore.hardware.DcMotor;
 import com.qualcomm.robotcore.hardware.DcMotorSimple;
 import com.qualcomm.robotcore.hardware.Gamepad;
+import com.qualcomm.robotcore.hardware.DcMotorEx;
 // Removed duplicate CRServo import
 import com.qualcomm.robotcore.util.ElapsedTime;
 import com.arcrobotics.ftclib.gamepad.GamepadEx;
@@ -15,11 +16,16 @@ import com.arcrobotics.ftclib.gamepad.GamepadKeys;
 public class drive extends LinearOpMode {
 
     private DcMotor rightFront, rightBack, leftBack, leftFront;
-    private DcMotor flywheelMotor, intakeMotor;
+    private DcMotor intakeMotor;
+
+    private DcMotorEx flywheelMotor;
     private DcMotor chamberSpinner;
     public CRServo artifactTransfer;
 
     // Logic Variables
+
+    private double highVelocity = 2100;
+    private double lowVelocity = 1500;
     private boolean flywheelSpinning = false;
     private boolean intaking = false;
 
@@ -60,7 +66,7 @@ public class drive extends LinearOpMode {
         rightBack = hardwareMap.get(DcMotor.class, "rightBack");
         leftBack = hardwareMap.get(DcMotor.class, "leftBack");
         leftFront = hardwareMap.get(DcMotor.class, "leftFront");
-        flywheelMotor = hardwareMap.get(DcMotor.class, "flywheel");
+        flywheelMotor = hardwareMap.get(DcMotorEx.class, "flywheel");
         intakeMotor = hardwareMap.get(DcMotor.class, "intakeMotor");
         chamberSpinner = hardwareMap.get(DcMotor.class, "chamberSpinner");
 
@@ -118,13 +124,13 @@ public class drive extends LinearOpMode {
             // Right Trigger: 0.63 Power
             // Else: 0 Power
             if (gamepad2.left_trigger > 0.1 && shootState == 0) {
-                flywheelMotor.setPower(0.8); //0.76
+                flywheelMotor.setVelocity(100);
                 gamepad2.rumble(200);
                 gamepad1.setLedColor(255, 0, 255, Gamepad.LED_DURATION_CONTINUOUS);
                 flywheeling = true;
             }
             else if (gamepad2.right_trigger > 0.1 && shootState == 0) {
-                flywheelMotor.setPower(0.65); // 0.63
+                flywheelMotor.setVelocity(100);
                 gamepad2.rumble(200);
                 gamepad1.setLedColor(255, 0, 255, Gamepad.LED_DURATION_CONTINUOUS);
                 flywheeling = true;
@@ -172,6 +178,7 @@ public class drive extends LinearOpMode {
             telemetry.addData("DRIVE MODE", slowMode ? "SLOW (25%)" : "FULL POWER");
             telemetry.addData("Flywheel Spinning", flywheeling);
             telemetry.addData("Chamber Pos", chamberSpinner.getCurrentPosition());
+            telemetry.addData("Flywheel RPM", flywheelMotor.getVelocity());
             telemetry.addData("Speed Multiplier", speedMultiplier);
             telemetry.addData("Intaking", intaking);
             telemetry.update();

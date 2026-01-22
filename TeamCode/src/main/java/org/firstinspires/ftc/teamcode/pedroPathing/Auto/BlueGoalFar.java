@@ -29,8 +29,12 @@ public class BlueGoalFar extends OpMode {
 
     // Poses
     private final Pose startPose = new Pose(85.05768609865473, 9.291515695067263, Math.toRadians(630));
-    private final Pose shootPose = new Pose(72.2780269058296, 22.77130044843051, Math.toRadians(303)); //300
+    private final Pose shootPose = new Pose(81.64125560538118, 16.152466367713018, Math.toRadians(303)); //300
     private final Pose intake1Pose = new Pose(129.26905829596413, 12.09865470852018);
+    private final Pose shoot2Pose = new Pose(81.64125560538118, 16.152466367713018, Math.toRadians(303)); //300
+    private final Pose intake2Pose = new Pose(129.26905829596413, 12.09865470852018);
+    private final Pose shoot3Pose = new Pose(81.64125560538118, 16.152466367713018, Math.toRadians(303)); //300
+    private final Pose intake3Pose = new Pose(129.26905829596413, 12.09865470852018);
 
     // Paths
     private PathChain driveToShoot, driveToIntake;
@@ -38,7 +42,7 @@ public class BlueGoalFar extends OpMode {
     // Constants
     private final double TICKS_PER_STEP = 480; //490
     private double chamberTargetPos = 0;
-    private final double INITIAL_WAIT = 0.9;
+    private final double INITIAL_WAIT = 1.0;
     private final double CHAMBER_WAIT = 1.9; //1.8
 
     // --- UPDATED CONSTANTS ---
