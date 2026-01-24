@@ -15,26 +15,17 @@ import org.firstinspires.ftc.teamcode.pedroPathing.vision.GoalTargeter;
 import org.firstinspires.ftc.teamcode.pedroPathing.vision.MotifDetector;
 import org.firstinspires.ftc.teamcode.pedroPathing.vision.VisionData;
 
-// Pedro Imports
 import com.pedropathing.follower.Follower;
 import com.pedropathing.geometry.BezierLine;
 import com.pedropathing.geometry.Pose;
 import com.pedropathing.paths.PathChain;
 
-/**
- * 6-Ball Autonomous OpMode with Alliance Selection.
- */
-@Autonomous(name = "6-Ball Auto (Motif v4)", group = "Auto")
+@Autonomous(name = "6-Ball Auto (Motif v5.1)", group = "Auto")
 public class AutonomousMode extends LinearOpMode {
 
-    // ===================== ALLIANCE SELECTION =====================
-    private enum Alliance {
-        RED, BLUE
-    }
-
+    private enum Alliance { RED, BLUE }
     private Alliance selectedAlliance = Alliance.BLUE;
 
-    // ===================== SUBSYSTEMS =====================
     private Follower follower;
     private Limelight limelight;
     private GoalTargeter goalTargeter;
@@ -45,26 +36,16 @@ public class AutonomousMode extends LinearOpMode {
     private DcMotor intakeMotor;
     private CRServo artifactTransfer;
 
-    // ===================== TIMING =====================
     private ElapsedTime runtime = new ElapsedTime();
     private ElapsedTime stateTimer = new ElapsedTime();
     private ElapsedTime shootTimer = new ElapsedTime();
 
-    // ===================== STATE MACHINE =====================
     private enum AutoState {
-        INIT,
-        SCAN_MOTIF,
-        SHOOT_PRELOADS,
-        NAV_TO_BALLS,
-        PICKUP_BALLS,
-        NAV_TO_SHOOT,
-        ALIGN_AND_SHOOT,
-        DONE
+        INIT, SCAN_MOTIF, SHOOT_PRELOADS, NAV_TO_BALLS, PICKUP_BALLS, NAV_TO_SHOOT, ALIGN_AND_SHOOT, DONE
     }
-
     private AutoState currentState = AutoState.INIT;
 
-    // ===================== CONFIGURATION =====================
+    // --- CONFIGURATION ---
     private static final double SCAN_TIMEOUT_SEC = 2.5;
     private static final double NAV_TIMEOUT_SEC = 5.0;
     private static final double PICKUP_TIMEOUT_SEC = 3.0;
@@ -76,21 +57,15 @@ public class AutonomousMode extends LinearOpMode {
     private final double TICKS_PER_STEP = 475.06;
     private double chamberTargetPos = 0;
 
-    // ===================== FIELD COORDINATES =====================
-
-    // BLUE START / SHOOT
-    private final Pose BLUE_START = new Pose(62.13, 7.03, Math.toRadians(270));
+    // --- COORDINATES ---
+    private final Pose BLUE_START = new Pose(62.13, 7.03, Math.toRadians(270)); //x=62.13, y=7.03
     private final Pose BLUE_SHOOT = new Pose(62.59, 18.90, Math.toRadians(295));
 
+    // INTAKE POSITIONS
+    private final Pose BLUE_INTAKE_GPP = new Pose(48, 19, Math.toRadians(0)); // Left
+    private final Pose BLUE_INTAKE_PGP = new Pose(48, 43, Math.toRadians(0)); // Center
+    private final Pose BLUE_INTAKE_PPG = new Pose(48, 67, Math.toRadians(0)); // Right
 
-    // GPP = Left (Bottom on Diagram)
-    private final Pose BLUE_INTAKE_GPP = new Pose(48, 36, Math.toRadians(0));
-    // PGP = Center
-    private final Pose BLUE_INTAKE_PGP = new Pose(48, 60, Math.toRadians(0));
-    // PPG = Right (Top on Diagram)
-    private final Pose BLUE_INTAKE_PPG = new Pose(48, 84, Math.toRadians(0));
-
-    // RED POINTS (Mirrored Approximation)
     private final Pose RED_START = new Pose(82.0, 137.0, Math.toRadians(90));
     private final Pose RED_SHOOT = new Pose(82.0, 125.0, Math.toRadians(65));
     private final Pose RED_INTAKE_GPP = new Pose(15.0, 132.0, Math.toRadians(180));
@@ -98,16 +73,15 @@ public class AutonomousMode extends LinearOpMode {
     private Pose startPose;
     private Pose shootPose;
     private Pose targetIntakePose;
-
     private PathChain currentPath;
 
-    // ===================== STATE VARIABLES =====================
-    private MotifDetector.Motif detectedMotif = MotifDetector.Motif.UNKNOWN;
+    // --- VARIABLES ---
+    private MotifDetector.Motif detectedMotif = MotifDetector.Motif.UNKNOWN; // This holds the LOCKED IN decision
     private int ballsShot = 0;
     private int shootSubState = 0;
     private boolean inSecondShootingPhase = false;
+    private String decisionReason = "Waiting"; // For Telemetry Debugging
 
-    // ===================== MAIN LOOP =====================
     @Override
     public void runOpMode() throws InterruptedException {
         initHardware();
@@ -119,11 +93,9 @@ public class AutonomousMode extends LinearOpMode {
             goalTargeter.update();
             motifDetector.update(goalTargeter.getVisionData());
 
-            telemetry.addLine("=== 6-BALL AUTO (READY) ===");
+            telemetry.addLine("=== 6-BALL AUTO (V5 FIXED) ===");
             telemetry.addData("Alliance", selectedAlliance);
-            telemetry.addData("Motif (Live)", motifDetector.getDetectedMotif());
-            telemetry.addData("Pattern", motifDetector.getPatternDescription());
-            telemetry.addLine("Map: GPP=Left(36) | PGP=Center(60) | PPG=Right(84)");
+            telemetry.addData("Live Detection", motifDetector.getDetectedMotif());
             telemetry.update();
         }
 
@@ -163,10 +135,8 @@ public class AutonomousMode extends LinearOpMode {
         }
     }
 
-    // ===================== INITIALIZATION =====================
     private void initHardware() {
         follower = Constants.createFollower(hardwareMap);
-
         flywheelMotor = hardwareMap.get(DcMotorEx.class, "flywheel");
         chamberSpinner = hardwareMap.get(DcMotor.class, "chamberSpinner");
         intakeMotor = hardwareMap.get(DcMotor.class, "intakeMotor");
@@ -184,29 +154,36 @@ public class AutonomousMode extends LinearOpMode {
         limelight = new Limelight();
         limelight.init(hardwareMap);
         limelight.switchPipeline(0);
-
         goalTargeter = new GoalTargeter(limelight);
         motifDetector = new MotifDetector();
     }
 
-    // ===================== STATE METHODS =====================
+    // ===================== LOGIC =====================
+
     private void runScanMotif() {
+        // Method 1: Confident Detection (3+ frames)
         if (motifDetector.hasConfidentDetection()) {
             detectedMotif = motifDetector.getDetectedMotif();
+            decisionReason = "Confident Detection";
+            RobotLog.d("AUTO", "Motif Locked: " + detectedMotif);
+
             buildAndFollowPath(startPose, shootPose);
             transitionTo(AutoState.SHOOT_PRELOADS);
             return;
         }
 
+        // Method 2: Timeout Logic
         if (stateTimer.seconds() > SCAN_TIMEOUT_SEC) {
             MotifDetector.Motif lastSeen = motifDetector.getDetectedMotif();
+
             if (lastSeen != MotifDetector.Motif.UNKNOWN) {
                 detectedMotif = lastSeen;
-                RobotLog.d("AUTO", "Timeout: Using weak detection: " + detectedMotif);
+                decisionReason = "Timeout (Weak Detection)";
             } else {
-                detectedMotif = MotifDetector.Motif.GPP;
-                RobotLog.d("AUTO", "Timeout: No detection, defaulting to GPP");
+                detectedMotif = MotifDetector.Motif.GPP; // Default to GPP
+                decisionReason = "Timeout (Default)";
             }
+            RobotLog.d("AUTO", "Motif Locked via Timeout: " + detectedMotif);
 
             buildAndFollowPath(startPose, shootPose);
             transitionTo(AutoState.SHOOT_PRELOADS);
@@ -255,8 +232,6 @@ public class AutonomousMode extends LinearOpMode {
         runShootingLogic(true);
     }
 
-    // ===================== SHARED LOGIC =====================
-
     private void runShootingLogic(boolean isSecondPhase) {
         switch (shootSubState) {
             case 0: // Move Chamber
@@ -299,17 +274,26 @@ public class AutonomousMode extends LinearOpMode {
     private void setTargetForMotif() {
         if (selectedAlliance == Alliance.BLUE) {
             switch (detectedMotif) {
-                // Exact mapping from your prompt
-                case GPP: targetIntakePose = BLUE_INTAKE_GPP; break; // Left
-                case PGP: targetIntakePose = BLUE_INTAKE_PGP; break; // Center
-                case PPG: targetIntakePose = BLUE_INTAKE_PPG; break; // Right
-                default:  targetIntakePose = BLUE_INTAKE_PGP; break;
+                case GPP:
+                    targetIntakePose = BLUE_INTAKE_GPP;
+                    break;
+                case PGP:
+                    targetIntakePose = BLUE_INTAKE_PGP;
+                    break;
+                case PPG:
+                    targetIntakePose = BLUE_INTAKE_PPG;
+                    break;
+                // FIX: Default is now GPP to match Timeout default
+                default:
+                    targetIntakePose = BLUE_INTAKE_GPP;
+                    RobotLog.d("AUTO", "Used Switch Default (GPP)");
+                    break;
             }
         } else {
             targetIntakePose = RED_INTAKE_GPP;
         }
 
-        RobotLog.d("AUTO", "Motif Target: " + detectedMotif + " -> " + targetIntakePose);
+        RobotLog.d("AUTO", "Target: " + detectedMotif + " at " + targetIntakePose.toString());
         buildAndFollowPath(shootPose, targetIntakePose);
     }
 
@@ -333,11 +317,17 @@ public class AutonomousMode extends LinearOpMode {
     }
 
     private void updateTelemetry() {
+        telemetry.addData("State", currentState);
+        telemetry.addData("Locked Motif", detectedMotif);
+        telemetry.addData("Decision Reason", decisionReason);
+        if (targetIntakePose != null) {
+            telemetry.addData("Target Y", "%.1f", targetIntakePose.getY());
+        }
+        telemetry.addData("Current Y", "%.1f", follower.getPose().getY());
+
         telemetry.addData("Runtime", "%.1f sec", runtime.seconds());
-        telemetry.addData("State", currentState.toString());
         telemetry.addData("Alliance", selectedAlliance.toString());
         telemetry.addLine();
-        telemetry.addData("Motif", detectedMotif.toString());
         telemetry.addData("Balls Shot", ballsShot + (inSecondShootingPhase ? "/6" : "/3"));
         telemetry.addLine();
 // Pedro Telemetry
@@ -349,6 +339,7 @@ public class AutonomousMode extends LinearOpMode {
         if (goalTargeter.hasTarget()) {
             telemetry.addData("TX", "%.1f°", goalTargeter.getTx());
         }
+
         telemetry.update();
     }
 }
