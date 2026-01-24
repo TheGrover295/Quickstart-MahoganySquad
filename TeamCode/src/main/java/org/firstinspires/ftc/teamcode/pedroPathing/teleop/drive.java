@@ -105,7 +105,7 @@ public class drive extends LinearOpMode {
             if (driverOp.wasJustPressed(GamepadKeys.Button.RIGHT_STICK_BUTTON)) {
                 slowMode = !slowMode;
                 if (slowMode) {
-                    speedMultiplier = 0.25;
+                    speedMultiplier = 0.35;
                     gamepad1.rumble(200);
                     gamepad1.setLedColor(0, 255, 0, Gamepad.LED_DURATION_CONTINUOUS);
                 } else {

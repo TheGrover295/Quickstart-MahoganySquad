@@ -14,7 +14,7 @@ import com.qualcomm.robotcore.util.ElapsedTime;
 import org.firstinspires.ftc.teamcode.pedroPathing.Constants;
 
 @Configurable
-@Autonomous(name = "Blue Auto Shoot", group = "AutoReal")
+@Autonomous(name = "Blue Auto Shoot", group = "Auto Tests")
 public class AutoShoot extends OpMode {
 
     private Follower follower;

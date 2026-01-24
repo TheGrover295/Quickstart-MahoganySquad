@@ -12,7 +12,7 @@ import com.qualcomm.robotcore.eventloop.opmode.OpMode;
 import org.firstinspires.ftc.teamcode.pedroPathing.Constants;
 
 @Configurable
-@Autonomous(name = "Red Goal Right", group = "AutoReal")
+@Autonomous(name = "Red Goal Right", group = "Auto Tests")
 public class Red_Goal_Right extends OpMode {
 
     private Follower follower;
