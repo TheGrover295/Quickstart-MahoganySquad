@@ -37,9 +37,9 @@ public class drive extends LinearOpMode {
 
     // --- Stepper Variables ---
     private double chamberTargetPos = 0;
-    private double ticksPerStep = 475.06;
-    private double tinyReverseTicks = 100.0;
-    private double superReverseTicks = 30.0;
+    private double ticksPerStep = 475.06; //A
+    private double shootPosticks = 100.0; //B
+    private double superReverseTicks = 30.0; //Y
 
     // --- Button State Trackers ---
     private boolean lastA = false;
@@ -181,7 +181,7 @@ public class drive extends LinearOpMode {
 
             // Chamber Logic
             if (gamepad2.a && !lastA) moveChamberStep();
-            if (gamepad2.b && !lastB) { chamberTargetPos += tinyReverseTicks; updateChamber(); }
+            if (gamepad2.b && !lastB) { chamberTargetPos += shootPosticks; updateChamber(); }
             if (gamepad2.y && !lastY) { chamberTargetPos -= 100; updateChamber(); }
             if (gamepad2.x && !lastX) { chamberTargetPos += superReverseTicks; updateChamber(); }
 

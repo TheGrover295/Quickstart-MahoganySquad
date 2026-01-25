@@ -20,7 +20,7 @@ import com.pedropathing.geometry.BezierLine;
 import com.pedropathing.geometry.Pose;
 import com.pedropathing.paths.PathChain;
 
-@Autonomous(name = "6-Ball Auto (Motif v5.4)", group = "Auto")
+@Autonomous(name = "6-Ball Auto (Motif v5.4.2)", group = "Auto")
 public class AutonomousMode extends LinearOpMode {
 
     // ===================== ALLIANCE SELECTION =====================
@@ -68,17 +68,21 @@ public class AutonomousMode extends LinearOpMode {
     private static final double PICKUP_TIMEOUT_SEC = 2.0;
 
     // UPDATED: Changed from Power to Velocity based on Drive file
-    private static final double SHOOT_VELOCITY = 1300; //1365
+    private static final double SHOOT_VELOCITY = 1280; //1365
 
     private static final double CHAMBER_WAIT = 1.9;
     private static final double ATM_PUSH_TIME_FIRST = 2.3;
     private static final double ATM_PUSH_TIME_NORMAL = 0.9;
-    private final double TICKS_PER_STEP = 475.06;
+
+    // --- Chamber Stepper Variables ---
+    private final double TICKS_PER_STEP = 475.06; // (A Button)
+    private final double SHOOT_POS_TICKS = 100; // (B Button) = 100
+    private final double BACK_TO_INTAKE_TICKS = 100; // (Y Button) = 30
     private double chamberTargetPos = 0;
 
     // Intake Sequencing Variables
     private int intakeSeqStage = 0;
-    private static final double INTAKE_SPIN_DELAY = 0.500; // 500ms
+    private static final double INTAKE_SPIN_DELAY = 0.200; // 500ms
 
     // ===================== FIELD COORDINATES =====================
 
@@ -87,13 +91,13 @@ public class AutonomousMode extends LinearOpMode {
     private final Pose BLUE_SHOOT = new Pose(56, 19, Math.toRadians(297)); //x=62.59 y=18.90 HEADING = 295
 
     // Blue Pre-Intake (Start driving from here)
-    private final Pose BLUE_INTAKE_GPP = new Pose(55, 34, Math.toRadians(-180)); //y=32 ALL x =48
-    private final Pose BLUE_INTAKE_PGP = new Pose(55, 58, Math.toRadians(-180)); //y=43
-    private final Pose BLUE_INTAKE_PPG = new Pose(55, 82, Math.toRadians(-180)); //y=67
+    private final Pose BLUE_INTAKE_GPP = new Pose(56, 34, Math.toRadians(-180)); //x=55
+    private final Pose BLUE_INTAKE_PGP = new Pose(56, 58, Math.toRadians(-180)); //y=43
+    private final Pose BLUE_INTAKE_PPG = new Pose(56, 82, Math.toRadians(-180)); //y=67
 
     // Blue Intake End (Stop driving here)
-    private final Pose BLUE_INTAKE_GPP_END = new Pose(35, 34, Math.toRadians(-180)); //done
-    private final Pose BLUE_INTAKE_PGP_END = new Pose(35, 58, Math.toRadians(-180));
+    private final Pose BLUE_INTAKE_GPP_END = new Pose(29, 34, Math.toRadians(-180)); //x35
+    private final Pose BLUE_INTAKE_PGP_END = new Pose(29, 58, Math.toRadians(-180)); //x35
     private final Pose BLUE_INTAKE_PPG_END = new Pose(35, 82, Math.toRadians(-180));
 
     // --- RED COORDINATES ---
@@ -246,12 +250,12 @@ public class AutonomousMode extends LinearOpMode {
         RobotLog.d("AUTO", "Motif Locked: " + detectedMotif);
         buildAndFollowPath(startPose, shootPose);
         transitionTo(AutoState.SHOOT_PRELOADS);
+        flywheelMotor.setVelocity(SHOOT_VELOCITY);
     }
 
     private void runShootPreloads() {
+        // Step 1: Start at Shoot Pos 3 Reg turns (A)
         if (follower.isBusy()) return;
-        // UPDATED: Use Velocity
-        flywheelMotor.setVelocity(SHOOT_VELOCITY);
         runShootingLogic(false);
     }
 
@@ -259,15 +263,25 @@ public class AutonomousMode extends LinearOpMode {
         if (!follower.isBusy() && stateTimer.seconds() > 0.3) {
             intakeMotor.setPower(1.0);
 
-            // RESET INTAKE SEQUENCING
+
+            chamberTargetPos -= BACK_TO_INTAKE_TICKS;
+            chamberSpinner.setTargetPosition((int) chamberTargetPos);
+            chamberSpinner.setPower(1);
+
+
             intakeSeqStage = 0;
 
             buildAndFollowPath(preIntakePose, finalIntakePose);
             transitionTo(AutoState.INTAKE_DRIVE);
         } else if (stateTimer.seconds() > NAV_TIMEOUT_SEC) {
+            // Failsafe path
             intakeMotor.setPower(1.0);
 
-            // RESET INTAKE SEQUENCING
+            // Apply intake pos logic here as well for safety
+            chamberTargetPos -= BACK_TO_INTAKE_TICKS;
+            chamberSpinner.setTargetPosition((int) chamberTargetPos);
+            chamberSpinner.setPower(1);
+
             intakeSeqStage = 0;
 
             buildAndFollowPath(preIntakePose, finalIntakePose);
@@ -276,7 +290,7 @@ public class AutonomousMode extends LinearOpMode {
     }
 
     private void runIntakeDrive() {
-        // RUN SEQUENCING
+        // Step 3: "then spin 3 reg times (A)"
         updateIntakeIndexing();
 
         if (!follower.isBusy() && stateTimer.seconds() > 0.3) {
@@ -308,19 +322,19 @@ public class AutonomousMode extends LinearOpMode {
                 break;
             case 1:
                 // Wait for delay, then Second ball spin
-                //if (intakeSeqTimer.seconds() >= INTAKE_SPIN_DELAY) {
+                if (intakeSeqTimer.seconds() >= INTAKE_SPIN_DELAY) {
                     moveChamberStep();
                     intakeSeqTimer.reset();
                     intakeSeqStage = 2;
-                //}
+                }
                 break;
             case 2:
                 // Wait for delay, then Third ball spin
-                //if (intakeSeqTimer.seconds() >= INTAKE_SPIN_DELAY) {
+                if (intakeSeqTimer.seconds() >= INTAKE_SPIN_DELAY) {
                     moveChamberStep();
                     intakeSeqTimer.reset();
                     intakeSeqStage = 3;
-                //}
+                }
                 break;
             case 3:
                 // Done
@@ -338,6 +352,11 @@ public class AutonomousMode extends LinearOpMode {
     }
 
     private void startSecondShootingPhase() {
+        // Step 4: "then adjust to shoot pos (B)" -> Add 100
+        chamberTargetPos += SHOOT_POS_TICKS;
+        chamberSpinner.setTargetPosition((int) chamberTargetPos);
+        chamberSpinner.setPower(1);
+
         inSecondShootingPhase = true;
         ballsShot = 0;
         shootSubState = 0;
@@ -345,8 +364,8 @@ public class AutonomousMode extends LinearOpMode {
     }
 
     private void runAlignAndShoot() {
-        // UPDATED: Use Velocity
         flywheelMotor.setVelocity(SHOOT_VELOCITY);
+        // Step 5: "then spin 3 reg times (A)"
         runShootingLogic(true);
     }
 
@@ -375,7 +394,6 @@ public class AutonomousMode extends LinearOpMode {
             case 3:
                 ballsShot++;
                 if (ballsShot >= 3) {
-                    // UPDATED: Use Velocity to stop
                     flywheelMotor.setVelocity(0);
                     if (!isSecondPhase) {
                         setTargetForMotif();
@@ -452,7 +470,6 @@ public class AutonomousMode extends LinearOpMode {
     }
 
     private void stopAllMechanisms() {
-        // UPDATED: Use Velocity to stop
         flywheelMotor.setVelocity(0);
         intakeMotor.setPower(0);
         artifactTransfer.setPower(0);
@@ -461,7 +478,7 @@ public class AutonomousMode extends LinearOpMode {
     private void moveChamberStep() {
         chamberTargetPos += TICKS_PER_STEP;
         chamberSpinner.setTargetPosition((int) chamberTargetPos);
-        chamberSpinner.setPower(0.7); //0.6
+        chamberSpinner.setPower(1); //0.6
     }
 
     private void updateTelemetry() {
