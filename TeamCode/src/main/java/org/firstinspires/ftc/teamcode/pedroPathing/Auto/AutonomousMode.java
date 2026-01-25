@@ -6,6 +6,7 @@ import com.qualcomm.robotcore.hardware.CRServo;
 import com.qualcomm.robotcore.hardware.DcMotor;
 import com.qualcomm.robotcore.hardware.DcMotorEx;
 import com.qualcomm.robotcore.hardware.DcMotorSimple;
+import com.qualcomm.robotcore.hardware.PIDFCoefficients; // Added Import
 import com.qualcomm.robotcore.util.ElapsedTime;
 import com.qualcomm.robotcore.util.RobotLog;
 
@@ -13,19 +14,22 @@ import org.firstinspires.ftc.teamcode.pedroPathing.Constants;
 import org.firstinspires.ftc.teamcode.pedroPathing.mechanisms.Limelight;
 import org.firstinspires.ftc.teamcode.pedroPathing.vision.GoalTargeter;
 import org.firstinspires.ftc.teamcode.pedroPathing.vision.MotifDetector;
-import org.firstinspires.ftc.teamcode.pedroPathing.vision.VisionData;
 
 import com.pedropathing.follower.Follower;
 import com.pedropathing.geometry.BezierLine;
 import com.pedropathing.geometry.Pose;
 import com.pedropathing.paths.PathChain;
 
-@Autonomous(name = "6-Ball Auto (Motif v5.1)", group = "Auto")
+@Autonomous(name = "6-Ball Auto (Motif v5.4)", group = "Auto")
 public class AutonomousMode extends LinearOpMode {
 
-    private enum Alliance { RED, BLUE }
-    private Alliance selectedAlliance = Alliance.BLUE;
+    // ===================== ALLIANCE SELECTION =====================
+    private enum Alliance {
+        RED, BLUE
+    }
+    private Alliance selectedAlliance = Alliance.BLUE; // Default
 
+    // ===================== SUBSYSTEMS =====================
     private Follower follower;
     private Limelight limelight;
     private GoalTargeter goalTargeter;
@@ -36,69 +40,111 @@ public class AutonomousMode extends LinearOpMode {
     private DcMotor intakeMotor;
     private CRServo artifactTransfer;
 
+    // ===================== TIMING =====================
     private ElapsedTime runtime = new ElapsedTime();
     private ElapsedTime stateTimer = new ElapsedTime();
     private ElapsedTime shootTimer = new ElapsedTime();
 
+    // ===================== STATE MACHINE =====================
     private enum AutoState {
-        INIT, SCAN_MOTIF, SHOOT_PRELOADS, NAV_TO_BALLS, PICKUP_BALLS, NAV_TO_SHOOT, ALIGN_AND_SHOOT, DONE
+        INIT,
+        SCAN_MOTIF,
+        SHOOT_PRELOADS,
+        NAV_TO_PRE_INTAKE, // Go to X=48
+        INTAKE_DRIVE,      // Drive to X=16/9 with intake ON
+        PICKUP_BALLS,      // Wait for intake
+        NAV_TO_SHOOT,
+        ALIGN_AND_SHOOT,
+        DONE
     }
     private AutoState currentState = AutoState.INIT;
 
-    // --- CONFIGURATION ---
+    // ===================== CONFIGURATION =====================
     private static final double SCAN_TIMEOUT_SEC = 2.5;
     private static final double NAV_TIMEOUT_SEC = 5.0;
-    private static final double PICKUP_TIMEOUT_SEC = 3.0;
+    private static final double PICKUP_TIMEOUT_SEC = 2.0;
 
-    private static final double SHOOT_SPEED = 0.8;
+    // UPDATED: Changed from Power to Velocity based on Drive file
+    private static final double SHOOT_VELOCITY = 1365;
+
     private static final double CHAMBER_WAIT = 1.9;
     private static final double ATM_PUSH_TIME_FIRST = 2.3;
     private static final double ATM_PUSH_TIME_NORMAL = 0.9;
     private final double TICKS_PER_STEP = 475.06;
     private double chamberTargetPos = 0;
 
-    // --- COORDINATES ---
-    private final Pose BLUE_START = new Pose(62.13, 7.03, Math.toRadians(270)); //x=62.13, y=7.03
-    private final Pose BLUE_SHOOT = new Pose(62.59, 18.90, Math.toRadians(295));
+    // ===================== FIELD COORDINATES =====================
 
-    // INTAKE POSITIONS
-    private final Pose BLUE_INTAKE_GPP = new Pose(48, 19, Math.toRadians(0)); // Left
-    private final Pose BLUE_INTAKE_PGP = new Pose(48, 43, Math.toRadians(0)); // Center
-    private final Pose BLUE_INTAKE_PPG = new Pose(48, 67, Math.toRadians(0)); // Right
+    // --- BLUE COORDINATES ---
+    private final Pose BLUE_START = new Pose(57, 8.5, Math.toRadians(270)); //x=62.13 y=7.03
+    private final Pose BLUE_SHOOT = new Pose(56, 19, Math.toRadians(295)); //x=62.59 y=18.90
 
+    // Blue Pre-Intake (Start driving from here)
+    private final Pose BLUE_INTAKE_GPP = new Pose(55, 34, Math.toRadians(-180)); //y=32 ALL x =48
+    private final Pose BLUE_INTAKE_PGP = new Pose(54, 60, Math.toRadians(-180)); //y=43
+    private final Pose BLUE_INTAKE_PPG = new Pose(54, 84, Math.toRadians(-180)); //y=67
+
+    // Blue Intake End (Stop driving here)
+    private final Pose BLUE_INTAKE_GPP_END = new Pose(35, 34, Math.toRadians(-180));
+    private final Pose BLUE_INTAKE_PGP_END = new Pose(35, 60, Math.toRadians(-180));
+    private final Pose BLUE_INTAKE_PPG_END = new Pose(35, 84, Math.toRadians(-180));
+
+    // --- RED COORDINATES ---
     private final Pose RED_START = new Pose(82.0, 137.0, Math.toRadians(90));
     private final Pose RED_SHOOT = new Pose(82.0, 125.0, Math.toRadians(65));
-    private final Pose RED_INTAKE_GPP = new Pose(15.0, 132.0, Math.toRadians(180));
 
+    // Red Pre-Intake (Mirrored X=48 -> X=96, Mirrored Y)
+    private final Pose RED_INTAKE_GPP = new Pose(96, 125, Math.toRadians(180));
+    private final Pose RED_INTAKE_PGP = new Pose(96, 101, Math.toRadians(180));
+    private final Pose RED_INTAKE_PPG = new Pose(96, 77, Math.toRadians(180));
+
+    // Red Intake End (Mirrored X=16 -> X=128, X=9 -> X=135)
+    private final Pose RED_INTAKE_GPP_END = new Pose(128, 125, Math.toRadians(180));
+    private final Pose RED_INTAKE_PGP_END = new Pose(135, 101, Math.toRadians(180));
+    private final Pose RED_INTAKE_PPG_END = new Pose(135, 77, Math.toRadians(180));
+
+    // Active Points
     private Pose startPose;
     private Pose shootPose;
-    private Pose targetIntakePose;
+    private Pose preIntakePose;
+    private Pose finalIntakePose;
+
     private PathChain currentPath;
 
     // --- VARIABLES ---
-    private MotifDetector.Motif detectedMotif = MotifDetector.Motif.UNKNOWN; // This holds the LOCKED IN decision
+    private MotifDetector.Motif detectedMotif = MotifDetector.Motif.UNKNOWN;
     private int ballsShot = 0;
     private int shootSubState = 0;
     private boolean inSecondShootingPhase = false;
-    private String decisionReason = "Waiting"; // For Telemetry Debugging
+    private String decisionReason = "Waiting";
 
     @Override
     public void runOpMode() throws InterruptedException {
         initHardware();
 
+        // ===================== SELECTION LOOP =====================
         while (!isStarted() && !isStopRequested()) {
-            if (gamepad1.left_bumper) selectedAlliance = Alliance.RED;
-            else if (gamepad1.right_bumper) selectedAlliance = Alliance.BLUE;
+            // TOGGLE LOGIC
+            if (gamepad1.left_bumper) {
+                selectedAlliance = Alliance.RED;
+            } else if (gamepad1.right_bumper) {
+                selectedAlliance = Alliance.BLUE;
+            }
 
+            // Vision Updates
             goalTargeter.update();
             motifDetector.update(goalTargeter.getVisionData());
 
-            telemetry.addLine("=== 6-BALL AUTO (V5 FIXED) ===");
-            telemetry.addData("Alliance", selectedAlliance);
-            telemetry.addData("Live Detection", motifDetector.getDetectedMotif());
+            // Telemetry
+            telemetry.addLine("=== 6-BALL AUTO (ALLIANCE SELECT) ===");
+            telemetry.addData("Selected Alliance", selectedAlliance);
+            telemetry.addLine("LB = RED | RB = BLUE");
+            telemetry.addLine();
+            telemetry.addData("Motif (Live)", motifDetector.getDetectedMotif());
             telemetry.update();
         }
 
+        // ===================== SETUP BASED ON SELECTION =====================
         if (selectedAlliance == Alliance.BLUE) {
             startPose = BLUE_START;
             shootPose = BLUE_SHOOT;
@@ -112,22 +158,22 @@ public class AutonomousMode extends LinearOpMode {
         currentState = AutoState.SCAN_MOTIF;
         stateTimer.reset();
 
+        // ===================== RUN LOOP =====================
         while (opModeIsActive()) {
             follower.update();
             goalTargeter.update();
             motifDetector.update(goalTargeter.getVisionData());
 
             switch (currentState) {
-                case SCAN_MOTIF:       runScanMotif(); break;
-                case SHOOT_PRELOADS:   runShootPreloads(); break;
-                case NAV_TO_BALLS:     runNavToBalls(); break;
-                case PICKUP_BALLS:     runPickupBalls(); break;
-                case NAV_TO_SHOOT:     runNavToShoot(); break;
-                case ALIGN_AND_SHOOT:  runAlignAndShoot(); break;
+                case SCAN_MOTIF:        runScanMotif(); break;
+                case SHOOT_PRELOADS:    runShootPreloads(); break;
+                case NAV_TO_PRE_INTAKE: runNavToPreIntake(); break;
+                case INTAKE_DRIVE:      runIntakeDrive(); break;
+                case PICKUP_BALLS:      runPickupBalls(); break;
+                case NAV_TO_SHOOT:      runNavToShoot(); break;
+                case ALIGN_AND_SHOOT:   runAlignAndShoot(); break;
                 case DONE:
-                    flywheelMotor.setPower(0);
-                    intakeMotor.setPower(0);
-                    artifactTransfer.setPower(0);
+                    stopAllMechanisms();
                     follower.breakFollowing();
                     break;
             }
@@ -142,7 +188,15 @@ public class AutonomousMode extends LinearOpMode {
         intakeMotor = hardwareMap.get(DcMotor.class, "intakeMotor");
         artifactTransfer = hardwareMap.get(CRServo.class, "ATM");
 
+        // Flywheel Configuration (Updated from Drive File)
         flywheelMotor.setDirection(DcMotorSimple.Direction.REVERSE);
+        flywheelMotor.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
+        flywheelMotor.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
+
+        // Apply PIDF Coefficients from Drive File (P=10, I=0, D=0, F=11)
+        PIDFCoefficients pidfNew = new PIDFCoefficients(10, 0, 0, 11);
+        flywheelMotor.setPIDFCoefficients(DcMotor.RunMode.RUN_USING_ENCODER, pidfNew);
+
         intakeMotor.setDirection(DcMotorSimple.Direction.REVERSE);
         chamberSpinner.setDirection(DcMotorSimple.Direction.REVERSE);
 
@@ -161,85 +215,96 @@ public class AutonomousMode extends LinearOpMode {
     // ===================== LOGIC =====================
 
     private void runScanMotif() {
-        // Method 1: Confident Detection (3+ frames)
         if (motifDetector.hasConfidentDetection()) {
             detectedMotif = motifDetector.getDetectedMotif();
-            decisionReason = "Confident Detection";
-            RobotLog.d("AUTO", "Motif Locked: " + detectedMotif);
-
-            buildAndFollowPath(startPose, shootPose);
-            transitionTo(AutoState.SHOOT_PRELOADS);
+            decisionReason = "Confident";
+            lockInMotifAndGo();
             return;
         }
 
-        // Method 2: Timeout Logic
         if (stateTimer.seconds() > SCAN_TIMEOUT_SEC) {
             MotifDetector.Motif lastSeen = motifDetector.getDetectedMotif();
-
             if (lastSeen != MotifDetector.Motif.UNKNOWN) {
                 detectedMotif = lastSeen;
-                decisionReason = "Timeout (Weak Detection)";
+                decisionReason = "Timeout (Weak)";
             } else {
-                detectedMotif = MotifDetector.Motif.GPP; // Default to GPP
+                detectedMotif = MotifDetector.Motif.GPP;
                 decisionReason = "Timeout (Default)";
             }
-            RobotLog.d("AUTO", "Motif Locked via Timeout: " + detectedMotif);
-
-            buildAndFollowPath(startPose, shootPose);
-            transitionTo(AutoState.SHOOT_PRELOADS);
+            lockInMotifAndGo();
         }
+    }
+
+    private void lockInMotifAndGo() {
+        RobotLog.d("AUTO", "Motif Locked: " + detectedMotif);
+        buildAndFollowPath(startPose, shootPose);
+        transitionTo(AutoState.SHOOT_PRELOADS);
     }
 
     private void runShootPreloads() {
         if (follower.isBusy()) return;
-        flywheelMotor.setPower(SHOOT_SPEED);
+        // UPDATED: Use Velocity
+        flywheelMotor.setVelocity(SHOOT_VELOCITY);
         runShootingLogic(false);
     }
 
-    private void runNavToBalls() {
-        if (!follower.isBusy() && stateTimer.seconds() > 0.5) {
-            transitionTo(AutoState.PICKUP_BALLS);
+    private void runNavToPreIntake() {
+        if (!follower.isBusy() && stateTimer.seconds() > 0.3) {
+            intakeMotor.setPower(1.0);
+            buildAndFollowPath(preIntakePose, finalIntakePose);
+            transitionTo(AutoState.INTAKE_DRIVE);
         } else if (stateTimer.seconds() > NAV_TIMEOUT_SEC) {
+            intakeMotor.setPower(1.0);
+            buildAndFollowPath(preIntakePose, finalIntakePose);
+            transitionTo(AutoState.INTAKE_DRIVE);
+        }
+    }
+
+    private void runIntakeDrive() {
+        if (!follower.isBusy() && stateTimer.seconds() > 0.3) {
+            transitionTo(AutoState.PICKUP_BALLS);
+        } else if (stateTimer.seconds() > 3.0) {
             transitionTo(AutoState.PICKUP_BALLS);
         }
     }
 
     private void runPickupBalls() {
-        intakeMotor.setPower(1.0);
         if (stateTimer.seconds() > PICKUP_TIMEOUT_SEC) {
             intakeMotor.setPower(0);
-            buildAndFollowPath(targetIntakePose, shootPose);
+            buildAndFollowPath(finalIntakePose, shootPose);
             transitionTo(AutoState.NAV_TO_SHOOT);
         }
     }
 
     private void runNavToShoot() {
         if (!follower.isBusy() && stateTimer.seconds() > 0.5) {
-            inSecondShootingPhase = true;
-            ballsShot = 0;
-            shootSubState = 0;
-            transitionTo(AutoState.ALIGN_AND_SHOOT);
+            startSecondShootingPhase();
         } else if (stateTimer.seconds() > NAV_TIMEOUT_SEC) {
-            inSecondShootingPhase = true;
-            ballsShot = 0;
-            shootSubState = 0;
-            transitionTo(AutoState.ALIGN_AND_SHOOT);
+            startSecondShootingPhase();
         }
     }
 
+    private void startSecondShootingPhase() {
+        inSecondShootingPhase = true;
+        ballsShot = 0;
+        shootSubState = 0;
+        transitionTo(AutoState.ALIGN_AND_SHOOT);
+    }
+
     private void runAlignAndShoot() {
-        flywheelMotor.setPower(SHOOT_SPEED);
+        // UPDATED: Use Velocity
+        flywheelMotor.setVelocity(SHOOT_VELOCITY);
         runShootingLogic(true);
     }
 
     private void runShootingLogic(boolean isSecondPhase) {
         switch (shootSubState) {
-            case 0: // Move Chamber
+            case 0:
                 moveChamberStep();
                 shootTimer.reset();
                 shootSubState = 1;
                 break;
-            case 1: // Wait Chamber
+            case 1:
                 if (shootTimer.seconds() >= CHAMBER_WAIT) {
                     artifactTransfer.setDirection(DcMotorSimple.Direction.FORWARD);
                     artifactTransfer.setPower(1);
@@ -247,20 +312,21 @@ public class AutonomousMode extends LinearOpMode {
                     shootSubState = 2;
                 }
                 break;
-            case 2: // Wait Push
+            case 2:
                 double pushTime = (ballsShot == 0 && !isSecondPhase) ? ATM_PUSH_TIME_FIRST : ATM_PUSH_TIME_NORMAL;
                 if (shootTimer.seconds() >= pushTime) {
                     artifactTransfer.setPower(0);
                     shootSubState = 3;
                 }
                 break;
-            case 3: // Check
+            case 3:
                 ballsShot++;
                 if (ballsShot >= 3) {
-                    flywheelMotor.setPower(0);
+                    // UPDATED: Use Velocity to stop
+                    flywheelMotor.setVelocity(0);
                     if (!isSecondPhase) {
                         setTargetForMotif();
-                        transitionTo(AutoState.NAV_TO_BALLS);
+                        transitionTo(AutoState.NAV_TO_PRE_INTAKE);
                     } else {
                         transitionTo(AutoState.DONE);
                     }
@@ -275,26 +341,48 @@ public class AutonomousMode extends LinearOpMode {
         if (selectedAlliance == Alliance.BLUE) {
             switch (detectedMotif) {
                 case GPP:
-                    targetIntakePose = BLUE_INTAKE_GPP;
+                    preIntakePose = BLUE_INTAKE_GPP;
+                    finalIntakePose = BLUE_INTAKE_GPP_END;
                     break;
                 case PGP:
-                    targetIntakePose = BLUE_INTAKE_PGP;
+                    preIntakePose = BLUE_INTAKE_PGP;
+                    finalIntakePose = BLUE_INTAKE_PGP_END;
                     break;
                 case PPG:
-                    targetIntakePose = BLUE_INTAKE_PPG;
+                    preIntakePose = BLUE_INTAKE_PPG;
+                    finalIntakePose = BLUE_INTAKE_PPG_END;
                     break;
-                // FIX: Default is now GPP to match Timeout default
                 default:
-                    targetIntakePose = BLUE_INTAKE_GPP;
-                    RobotLog.d("AUTO", "Used Switch Default (GPP)");
+                    preIntakePose = BLUE_INTAKE_GPP;
+                    finalIntakePose = BLUE_INTAKE_GPP_END;
                     break;
             }
         } else {
-            targetIntakePose = RED_INTAKE_GPP;
+            // RED LOGIC
+            switch (detectedMotif) {
+                case GPP:
+                    preIntakePose = RED_INTAKE_GPP;
+                    finalIntakePose = RED_INTAKE_GPP_END;
+                    break;
+                case PGP:
+                    preIntakePose = RED_INTAKE_PGP;
+                    finalIntakePose = RED_INTAKE_PGP_END;
+                    break;
+                case PPG:
+                    preIntakePose = RED_INTAKE_PPG;
+                    finalIntakePose = RED_INTAKE_PPG_END;
+                    break;
+                default:
+                    preIntakePose = RED_INTAKE_GPP;
+                    finalIntakePose = RED_INTAKE_GPP_END;
+                    break;
+            }
         }
 
-        RobotLog.d("AUTO", "Target: " + detectedMotif + " at " + targetIntakePose.toString());
-        buildAndFollowPath(shootPose, targetIntakePose);
+        RobotLog.d("AUTO", "Targets: Pre=" + preIntakePose.toString() + " | Final=" + finalIntakePose.toString());
+
+        // Build first leg: Shoot -> Pre-Intake
+        buildAndFollowPath(shootPose, preIntakePose);
     }
 
     private void buildAndFollowPath(Pose start, Pose end) {
@@ -310,6 +398,13 @@ public class AutonomousMode extends LinearOpMode {
         stateTimer.reset();
     }
 
+    private void stopAllMechanisms() {
+        // UPDATED: Use Velocity to stop
+        flywheelMotor.setVelocity(0);
+        intakeMotor.setPower(0);
+        artifactTransfer.setPower(0);
+    }
+
     private void moveChamberStep() {
         chamberTargetPos += TICKS_PER_STEP;
         chamberSpinner.setTargetPosition((int) chamberTargetPos);
@@ -318,28 +413,13 @@ public class AutonomousMode extends LinearOpMode {
 
     private void updateTelemetry() {
         telemetry.addData("State", currentState);
-        telemetry.addData("Locked Motif", detectedMotif);
-        telemetry.addData("Decision Reason", decisionReason);
-        if (targetIntakePose != null) {
-            telemetry.addData("Target Y", "%.1f", targetIntakePose.getY());
+        telemetry.addData("Alliance", selectedAlliance);
+        telemetry.addData("Motif", detectedMotif);
+        // Added Velocity check
+        telemetry.addData("Flywheel Vel", flywheelMotor.getVelocity());
+        if (finalIntakePose != null) {
+            telemetry.addData("Target Final X", "%.1f", finalIntakePose.getX());
         }
-        telemetry.addData("Current Y", "%.1f", follower.getPose().getY());
-
-        telemetry.addData("Runtime", "%.1f sec", runtime.seconds());
-        telemetry.addData("Alliance", selectedAlliance.toString());
-        telemetry.addLine();
-        telemetry.addData("Balls Shot", ballsShot + (inSecondShootingPhase ? "/6" : "/3"));
-        telemetry.addLine();
-// Pedro Telemetry
-        telemetry.addData("X", "%.1f", follower.getPose().getX());
-        telemetry.addData("Y", "%.1f", follower.getPose().getY());
-        telemetry.addData("H", "%.1f", Math.toDegrees(follower.getPose().getHeading()));
-        telemetry.addData("Busy", follower.isBusy());
-
-        if (goalTargeter.hasTarget()) {
-            telemetry.addData("TX", "%.1f°", goalTargeter.getTx());
-        }
-
         telemetry.update();
     }
 }
