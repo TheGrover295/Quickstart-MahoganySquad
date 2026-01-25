@@ -48,7 +48,7 @@ public class AutonomousMode extends LinearOpMode {
     // ===================== STATE MACHINE =====================
     private enum AutoState {
         INIT,
-        SCAN_MOTIF,
+        SCAN_MOTIF, //change
         SHOOT_PRELOADS,
         NAV_TO_PRE_INTAKE, // Go to X=48
         INTAKE_DRIVE,      // Drive to X=16/9 with intake ON
