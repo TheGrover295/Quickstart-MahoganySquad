@@ -6,7 +6,7 @@ import com.qualcomm.robotcore.hardware.CRServo;
 import com.qualcomm.robotcore.hardware.DcMotor;
 import com.qualcomm.robotcore.hardware.DcMotorEx;
 import com.qualcomm.robotcore.hardware.DcMotorSimple;
-import com.qualcomm.robotcore.hardware.PIDFCoefficients; // Added Import
+import com.qualcomm.robotcore.hardware.PIDFCoefficients;
 import com.qualcomm.robotcore.util.ElapsedTime;
 import com.qualcomm.robotcore.util.RobotLog;
 
@@ -45,10 +45,13 @@ public class AutonomousMode extends LinearOpMode {
     private ElapsedTime stateTimer = new ElapsedTime();
     private ElapsedTime shootTimer = new ElapsedTime();
 
+    // New timer for intake sequencing
+    private ElapsedTime intakeSeqTimer = new ElapsedTime();
+
     // ===================== STATE MACHINE =====================
     private enum AutoState {
         INIT,
-        SCAN_MOTIF, //change
+        SCAN_MOTIF,
         SHOOT_PRELOADS,
         NAV_TO_PRE_INTAKE, // Go to X=48
         INTAKE_DRIVE,      // Drive to X=16/9 with intake ON
@@ -72,6 +75,10 @@ public class AutonomousMode extends LinearOpMode {
     private static final double ATM_PUSH_TIME_NORMAL = 0.9;
     private final double TICKS_PER_STEP = 475.06;
     private double chamberTargetPos = 0;
+
+    // Intake Sequencing Variables
+    private int intakeSeqStage = 0;
+    private static final double INTAKE_SPIN_DELAY = 0.500; // 500ms
 
     // ===================== FIELD COORDINATES =====================
 
@@ -251,16 +258,27 @@ public class AutonomousMode extends LinearOpMode {
     private void runNavToPreIntake() {
         if (!follower.isBusy() && stateTimer.seconds() > 0.3) {
             intakeMotor.setPower(1.0);
+
+            // RESET INTAKE SEQUENCING
+            intakeSeqStage = 0;
+
             buildAndFollowPath(preIntakePose, finalIntakePose);
             transitionTo(AutoState.INTAKE_DRIVE);
         } else if (stateTimer.seconds() > NAV_TIMEOUT_SEC) {
             intakeMotor.setPower(1.0);
+
+            // RESET INTAKE SEQUENCING
+            intakeSeqStage = 0;
+
             buildAndFollowPath(preIntakePose, finalIntakePose);
             transitionTo(AutoState.INTAKE_DRIVE);
         }
     }
 
     private void runIntakeDrive() {
+        // RUN SEQUENCING
+        updateIntakeIndexing();
+
         if (!follower.isBusy() && stateTimer.seconds() > 0.3) {
             transitionTo(AutoState.PICKUP_BALLS);
         } else if (stateTimer.seconds() > 3.0) {
@@ -269,10 +287,44 @@ public class AutonomousMode extends LinearOpMode {
     }
 
     private void runPickupBalls() {
+        // CONTINUE SEQUENCING (In case drive finished before 3 spins)
+        updateIntakeIndexing();
+
         if (stateTimer.seconds() > PICKUP_TIMEOUT_SEC) {
             //intakeMotor.setPower(0);
             buildAndFollowPath(finalIntakePose, shootPose);
             transitionTo(AutoState.NAV_TO_SHOOT);
+        }
+    }
+
+    // Helper method for the chamber sequence
+    private void updateIntakeIndexing() {
+        switch (intakeSeqStage) {
+            case 0:
+                // First ball spin
+                moveChamberStep();
+                intakeSeqTimer.reset();
+                intakeSeqStage = 1;
+                break;
+            case 1:
+                // Wait for delay, then Second ball spin
+                //if (intakeSeqTimer.seconds() >= INTAKE_SPIN_DELAY) {
+                    moveChamberStep();
+                    intakeSeqTimer.reset();
+                    intakeSeqStage = 2;
+                //}
+                break;
+            case 2:
+                // Wait for delay, then Third ball spin
+                //if (intakeSeqTimer.seconds() >= INTAKE_SPIN_DELAY) {
+                    moveChamberStep();
+                    intakeSeqTimer.reset();
+                    intakeSeqStage = 3;
+                //}
+                break;
+            case 3:
+                // Done
+                break;
         }
     }
 
