@@ -65,7 +65,7 @@ public class AutonomousMode extends LinearOpMode {
     private static final double PICKUP_TIMEOUT_SEC = 2.0;
 
     // UPDATED: Changed from Power to Velocity based on Drive file
-    private static final double SHOOT_VELOCITY = 1365;
+    private static final double SHOOT_VELOCITY = 1300; //1365
 
     private static final double CHAMBER_WAIT = 1.9;
     private static final double ATM_PUSH_TIME_FIRST = 2.3;
@@ -77,17 +77,17 @@ public class AutonomousMode extends LinearOpMode {
 
     // --- BLUE COORDINATES ---
     private final Pose BLUE_START = new Pose(57, 8.5, Math.toRadians(270)); //x=62.13 y=7.03
-    private final Pose BLUE_SHOOT = new Pose(56, 19, Math.toRadians(295)); //x=62.59 y=18.90
+    private final Pose BLUE_SHOOT = new Pose(56, 19, Math.toRadians(297)); //x=62.59 y=18.90 HEADING = 295
 
     // Blue Pre-Intake (Start driving from here)
     private final Pose BLUE_INTAKE_GPP = new Pose(55, 34, Math.toRadians(-180)); //y=32 ALL x =48
-    private final Pose BLUE_INTAKE_PGP = new Pose(54, 60, Math.toRadians(-180)); //y=43
-    private final Pose BLUE_INTAKE_PPG = new Pose(54, 84, Math.toRadians(-180)); //y=67
+    private final Pose BLUE_INTAKE_PGP = new Pose(55, 58, Math.toRadians(-180)); //y=43
+    private final Pose BLUE_INTAKE_PPG = new Pose(55, 82, Math.toRadians(-180)); //y=67
 
     // Blue Intake End (Stop driving here)
-    private final Pose BLUE_INTAKE_GPP_END = new Pose(35, 34, Math.toRadians(-180));
-    private final Pose BLUE_INTAKE_PGP_END = new Pose(35, 60, Math.toRadians(-180));
-    private final Pose BLUE_INTAKE_PPG_END = new Pose(35, 84, Math.toRadians(-180));
+    private final Pose BLUE_INTAKE_GPP_END = new Pose(35, 34, Math.toRadians(-180)); //done
+    private final Pose BLUE_INTAKE_PGP_END = new Pose(35, 58, Math.toRadians(-180));
+    private final Pose BLUE_INTAKE_PPG_END = new Pose(35, 82, Math.toRadians(-180));
 
     // --- RED COORDINATES ---
     private final Pose RED_START = new Pose(82.0, 137.0, Math.toRadians(90));
@@ -270,7 +270,7 @@ public class AutonomousMode extends LinearOpMode {
 
     private void runPickupBalls() {
         if (stateTimer.seconds() > PICKUP_TIMEOUT_SEC) {
-            intakeMotor.setPower(0);
+            //intakeMotor.setPower(0);
             buildAndFollowPath(finalIntakePose, shootPose);
             transitionTo(AutoState.NAV_TO_SHOOT);
         }
@@ -278,6 +278,7 @@ public class AutonomousMode extends LinearOpMode {
 
     private void runNavToShoot() {
         if (!follower.isBusy() && stateTimer.seconds() > 0.5) {
+            intakeMotor.setPower(0);
             startSecondShootingPhase();
         } else if (stateTimer.seconds() > NAV_TIMEOUT_SEC) {
             startSecondShootingPhase();
@@ -408,7 +409,7 @@ public class AutonomousMode extends LinearOpMode {
     private void moveChamberStep() {
         chamberTargetPos += TICKS_PER_STEP;
         chamberSpinner.setTargetPosition((int) chamberTargetPos);
-        chamberSpinner.setPower(0.6);
+        chamberSpinner.setPower(0.7); //0.6
     }
 
     private void updateTelemetry() {
