@@ -87,6 +87,7 @@ public class AutonomousMode extends LinearOpMode {
     // ===================== FIELD COORDINATES =====================
 
     // --- BLUE COORDINATES ---
+    // --- CHANGE BACK IF NEEDED ---
     private final Pose BLUE_START = new Pose(57, 8.5, Math.toRadians(270)); //x=62.13 y=7.03
     private final Pose BLUE_SHOOT = new Pose(56, 19, Math.toRadians(297)); //x=62.59 y=18.90 HEADING = 295
 
