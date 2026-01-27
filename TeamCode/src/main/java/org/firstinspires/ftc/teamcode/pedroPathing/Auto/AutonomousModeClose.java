@@ -20,8 +20,8 @@ import com.pedropathing.geometry.BezierLine;
 import com.pedropathing.geometry.Pose;
 import com.pedropathing.paths.PathChain;
 
-@Autonomous(name = "6-Ball Auto Far (Motif v5.5.1)", group = "Auto")
-public class AutonomousMode extends LinearOpMode {
+@Autonomous(name = "6-Ball Auto Close (Motif v1.0.0)", group = "Auto")
+public class AutonomousModeClose extends LinearOpMode {
 
     // ===================== ALLIANCE SELECTION =====================
     private enum Alliance {
@@ -68,7 +68,7 @@ public class AutonomousMode extends LinearOpMode {
     private static final double PICKUP_TIMEOUT_SEC = 2.0;
 
     // UPDATED: Changed from Power to Velocity based on Drive file
-    private static final double SHOOT_VELOCITY = 1200; //1200
+    private static final double SHOOT_VELOCITY = 300; //CHANGE
 
     private static final double CHAMBER_WAIT = 2.5; //1.9, 1.0, 1.4, 2.4
     private static final double ATM_PUSH_TIME_FIRST = 2.0; //2.3
@@ -88,8 +88,8 @@ public class AutonomousMode extends LinearOpMode {
 
     // --- BLUE COORDINATES ---
     // --- CHANGE BACK IF NEEDED ---
-    private final Pose BLUE_START = new Pose(57, 8.5, Math.toRadians(270)); //x=62.13 y=7.03
-    private final Pose BLUE_SHOOT = new Pose(56, 15, Math.toRadians(299)); //x=56 y=17, HEADING = 297
+    private final Pose BLUE_START = new Pose(20.968, 122.296, Math.toRadians(325)); //x=62.13 y=7.03
+    private final Pose BLUE_SHOOT = new Pose(59.686, 84.116, Math.toRadians(318)); //x=56 y=17, HEADING = 297
 
     // Blue Pre-Intake (Start driving from here)
     private final Pose BLUE_INTAKE_GPP = new Pose(56, 34, Math.toRadians(-180)); //x=56 y=34
