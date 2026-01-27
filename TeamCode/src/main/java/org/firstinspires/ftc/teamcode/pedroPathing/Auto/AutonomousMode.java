@@ -68,7 +68,7 @@ public class AutonomousMode extends LinearOpMode {
     private static final double PICKUP_TIMEOUT_SEC = 2.0;
 
     // UPDATED: Changed from Power to Velocity based on Drive file
-    private static final double SHOOT_VELOCITY = 1200; //1200
+    private static final double SHOOT_VELOCITY = 1298; //1200
 
     private static final double CHAMBER_WAIT = 2.5; //1.9, 1.0, 1.4, 2.4
     private static final double ATM_PUSH_TIME_FIRST = 2.0; //2.3
@@ -89,7 +89,7 @@ public class AutonomousMode extends LinearOpMode {
     // --- BLUE COORDINATES ---
     // --- CHANGE BACK IF NEEDED ---
     private final Pose BLUE_START = new Pose(57, 8.5, Math.toRadians(270)); //x=62.13 y=7.03
-    private final Pose BLUE_SHOOT = new Pose(56, 15, Math.toRadians(299)); //x=56 y=17, HEADING = 297
+    private final Pose BLUE_SHOOT = new Pose(56, 15, Math.toRadians(292)); //x=56 y=17, HEADING = 297
 
     // Blue Pre-Intake (Start driving from here)
     private final Pose BLUE_INTAKE_GPP = new Pose(56, 34, Math.toRadians(-180)); //x=56 y=34
@@ -166,6 +166,9 @@ public class AutonomousMode extends LinearOpMode {
         }
 
         follower.setStartingPose(startPose);
+        buildAndFollowPath(startPose, shootPose);
+        flywheelMotor.setVelocity(SHOOT_VELOCITY);
+
         runtime.reset();
         currentState = AutoState.SCAN_MOTIF;
         stateTimer.reset();
@@ -227,31 +230,28 @@ public class AutonomousMode extends LinearOpMode {
     // ===================== LOGIC =====================
 
     private void runScanMotif() {
-        if (motifDetector.hasConfidentDetection()) {
+        // Continuously check for confident detection while driving
+        if (detectedMotif == MotifDetector.Motif.UNKNOWN && motifDetector.hasConfidentDetection()) {
             detectedMotif = motifDetector.getDetectedMotif();
-            decisionReason = "Confident";
-            lockInMotifAndGo();
-            return;
+            decisionReason = "Confident (Drive)";
+            RobotLog.d("AUTO", "Motif Locked (Confident): " + detectedMotif);
         }
 
-        if (stateTimer.seconds() > SCAN_TIMEOUT_SEC) {
-            MotifDetector.Motif lastSeen = motifDetector.getDetectedMotif();
-            if (lastSeen != MotifDetector.Motif.UNKNOWN) {
-                detectedMotif = lastSeen;
-                decisionReason = "Timeout (Weak)";
-            } else {
-                detectedMotif = MotifDetector.Motif.GPP;
-                decisionReason = "Timeout (Default)";
+        // Once we arrive at the shooting position, lock in whatever we found
+        if (!follower.isBusy()) {
+            if (detectedMotif == MotifDetector.Motif.UNKNOWN) {
+                MotifDetector.Motif lastSeen = motifDetector.getDetectedMotif();
+                if (lastSeen != MotifDetector.Motif.UNKNOWN) {
+                    detectedMotif = lastSeen;
+                    decisionReason = "Arrived (Weak)";
+                } else {
+                    detectedMotif = MotifDetector.Motif.GPP;
+                    decisionReason = "Arrived (Default)";
+                }
+                RobotLog.d("AUTO", "Motif Locked (Final): " + detectedMotif);
             }
-            lockInMotifAndGo();
+            transitionTo(AutoState.SHOOT_PRELOADS);
         }
-    }
-
-    private void lockInMotifAndGo() {
-        RobotLog.d("AUTO", "Motif Locked: " + detectedMotif);
-        buildAndFollowPath(startPose, shootPose);
-        transitionTo(AutoState.SHOOT_PRELOADS);
-        flywheelMotor.setVelocity(SHOOT_VELOCITY);
     }
 
     private void runShootPreloads() {
