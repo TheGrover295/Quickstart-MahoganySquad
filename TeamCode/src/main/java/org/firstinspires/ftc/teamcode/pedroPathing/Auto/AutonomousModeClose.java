@@ -13,7 +13,7 @@ import com.qualcomm.robotcore.util.RobotLog;
 import org.firstinspires.ftc.teamcode.pedroPathing.Constants;
 import org.firstinspires.ftc.teamcode.pedroPathing.mechanisms.Limelight;
 import org.firstinspires.ftc.teamcode.pedroPathing.vision.GoalTargeter;
-import org.firstinspires.ftc.teamcode.pedroPathing.vision.MotifDetector; //cool
+import org.firstinspires.ftc.teamcode.pedroPathing.vision.MotifDetector; //cool2
 
 import com.pedropathing.follower.Follower;
 import com.pedropathing.geometry.BezierLine;
