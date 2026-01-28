@@ -20,7 +20,7 @@ import com.pedropathing.geometry.BezierLine;
 import com.pedropathing.geometry.Pose;
 import com.pedropathing.paths.PathChain;
 
-@Autonomous(name = "Limelight Close (Motif v1.1.0)", group = "Auto")
+@Autonomous(name = "Limelight Close (Motif v1.1.1)", group = "Auto")
 public class AutonomousModeClose extends LinearOpMode {
 
     // ===================== ALLIANCE SELECTION =====================

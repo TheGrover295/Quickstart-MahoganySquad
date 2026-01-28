@@ -20,7 +20,7 @@ import com.pedropathing.geometry.BezierLine;
 import com.pedropathing.geometry.Pose;
 import com.pedropathing.paths.PathChain;
 
-@Autonomous(name = "6-Ball Auto Far (Motif v5.5.1)", group = "Auto")
+@Autonomous(name = "Limelight Far (Motif v5.5.2)", group = "Auto")
 public class AutonomousMode extends LinearOpMode {
 
     // ===================== ALLIANCE SELECTION =====================
