@@ -18,7 +18,7 @@ import com.pedropathing.geometry.BezierLine;
 import com.pedropathing.geometry.Pose;
 import com.pedropathing.paths.PathChain;
 
-@Autonomous(name = "GPP Autonomous", group = "Auto")
+@Autonomous(name = "GPP Autonomous Far", group = "Auto")
 public class GPPAutonomous extends LinearOpMode {
 
     // ===================== ALLIANCE SELECTION =====================

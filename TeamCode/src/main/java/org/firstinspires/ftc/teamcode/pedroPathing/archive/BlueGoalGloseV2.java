@@ -1,4 +1,4 @@
-package org.firstinspires.ftc.teamcode.pedroPathing.Auto;
+package org.firstinspires.ftc.teamcode.pedroPathing.archive;
 
 import com.bylazar.configurables.annotations.Configurable;
 import com.pedropathing.follower.Follower;
@@ -7,115 +7,112 @@ import com.pedropathing.geometry.Pose;
 import com.pedropathing.paths.PathChain;
 import com.qualcomm.robotcore.eventloop.opmode.Autonomous;
 import com.qualcomm.robotcore.eventloop.opmode.OpMode;
-import com.qualcomm.robotcore.hardware.CRServo; // Changed from Servo
 import com.qualcomm.robotcore.hardware.DcMotor;
 import com.qualcomm.robotcore.hardware.DcMotorSimple;
+import com.qualcomm.robotcore.hardware.CRServo;
 import com.qualcomm.robotcore.util.ElapsedTime;
 import org.firstinspires.ftc.teamcode.pedroPathing.Constants;
 
 @Configurable
-@Autonomous(name = "Blue Goal Far", group = "AutoReal")
-public class BlueGoalFar extends OpMode {
-
+@Autonomous(name = "Blue Goal Close", group = "archive")
+public class BlueGoalGloseV2 extends OpMode {
     private Follower follower;
     private ElapsedTime timer = new ElapsedTime();
-    private ElapsedTime stateTimer = new ElapsedTime(); // Secondary timer for safety
+    private ElapsedTime stateTimer = new ElapsedTime();
     private int pathState = 0;
     private int totalShotsFired = 0;
 
     // Hardware
     private DcMotor flywheelMotor, chamberSpinner;
-    private CRServo artifactTransfer; // Changed to CRServo to match BlueGoalClose
+    private CRServo artifactTransfer;
 
     // Poses
-    private final Pose startPose = new Pose(85.05768609865473, 9.291515695067263, Math.toRadians(630));
-    private final Pose shootPose = new Pose(81.64125560538118, 16.152466367713018, Math.toRadians(303)); //300
-    private final Pose intake1Pose = new Pose(129.26905829596413, 12.09865470852018);
-    private final Pose shoot2Pose = new Pose(81.64125560538118, 16.152466367713018, Math.toRadians(303)); //300
-    private final Pose intake2Pose = new Pose(129.26905829596413, 12.09865470852018);
-    private final Pose shoot3Pose = new Pose(81.64125560538118, 16.152466367713018, Math.toRadians(303)); //300
-    private final Pose intake3Pose = new Pose(129.26905829596413, 12.09865470852018);
+    private final Pose startPose = new Pose(20.968, 122.296, Math.toRadians(325));
+    private final Pose shoot1 = new Pose(59.68609865470853, 84.11659192825114, Math.toRadians(318)); // 320
+
+    //private final Pose turn1 = new Pose(59.68609865470853, 84.11659192825114);
+    private final Pose intake1 = new Pose(44.717488789237656, 84.30044843049328, Math.toRadians(180));
 
     // Paths
-    private PathChain driveToShoot, driveToIntake;
+    private PathChain driveToShoot1, driveToIntake1, drivetoTurn1;
 
     // Constants
-    private final double TICKS_PER_STEP = 480; //490
+    private final double TICKS_PER_STEP = 490;
     private double chamberTargetPos = 0;
-    private final double INITIAL_WAIT = 1.0;
-    private final double CHAMBER_WAIT = 1.9; //1.8
+    private final double INITIAL_WAIT = 0.9;
+    private final double CHAMBER_WAIT = 1.8;
 
     // --- UPDATED CONSTANTS ---
     // Increase this time specifically for the first stiff shot
-    private final double ATM_PUSH_TIME_FIRST = 2.3;
+    private final double ATM_PUSH_TIME_FIRST = 2.3; //2.0
     // This is the normal time for shots 2 and 3
     private final double ATM_PUSH_TIME_NORMAL = 0.9;
     // Increased to prevent the loop from cutting off the longer first shot
     private final double TOTAL_SHOT_CYCLE = 2.5;
 
+
     public void buildPaths() {
-        driveToShoot = follower.pathBuilder()
-                .addPath(new BezierLine(startPose, shootPose))
-                .setLinearHeadingInterpolation(startPose.getHeading(), shootPose.getHeading())
+        driveToShoot1 = follower.pathBuilder()
+                .addPath(new BezierLine(startPose, shoot1))
+                .setLinearHeadingInterpolation(startPose.getHeading(), shoot1.getHeading())
+                .build();
+        /*
+        drivetoTurn1 = follower.pathBuilder()
+                .addPath(new BezierPoint(turn1))
+                .setLinearHeadingInterpolation(shoot1.getHeading(), Math.toRadians(180))
                 .build();
 
-        driveToIntake = follower.pathBuilder()
-                .addPath(new BezierLine(shootPose, intake1Pose))
-                .setLinearHeadingInterpolation(shootPose.getHeading(), intake1Pose.getHeading())
+         */
+
+        driveToIntake1 = follower.pathBuilder()
+                .addPath(new BezierLine(shoot1, intake1))
+                .setLinearHeadingInterpolation(shoot1.getHeading(), intake1.getHeading())
                 .build();
+
+
+
+
     }
 
     @Override
     public void init() {
         follower = Constants.createFollower(hardwareMap);
         follower.setStartingPose(startPose);
-
         flywheelMotor = hardwareMap.get(DcMotor.class, "flywheel");
         chamberSpinner = hardwareMap.get(DcMotor.class, "chamberSpinner");
-
-        // Updated hardware map for CRServo
         artifactTransfer = hardwareMap.get(CRServo.class, "ATM");
-
         flywheelMotor.setDirection(DcMotorSimple.Direction.REVERSE);
         chamberSpinner.setDirection(DcMotorSimple.Direction.REVERSE);
-
         chamberSpinner.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
         chamberSpinner.setTargetPosition(0);
         chamberSpinner.setMode(DcMotor.RunMode.RUN_TO_POSITION);
         chamberSpinner.setPower(0.63);
-
         buildPaths();
     }
 
     public void autonomousPathUpdate() {
         switch (pathState) {
             case 0: // Start driving to Shoot
-                follower.followPath(driveToShoot);
+                follower.followPath(driveToShoot1);
                 setPathState(1);
                 break;
-
             case 1: // Wait for arrival
-                // Added a small time buffer to ensure isBusy() has time to register
                 if (!follower.isBusy() && stateTimer.seconds() > 0.5) {
                     setPathState(2);
-                    flywheelMotor.setPower(0.77);
+                    flywheelMotor.setPower(0.64); //0.65
                 }
                 break;
-
             case 2: // Short pause before shooting
                 if (stateTimer.seconds() >= INITIAL_WAIT) {
                     setPathState(3);
                 }
                 break;
-
             case 3: // Rotate Chamber & Spool Flywheel
                 moveChamberStep();
                 setPathState(4);
                 break;
-
             case 4: // Wait for Chamber to settle
                 if (stateTimer.seconds() >= CHAMBER_WAIT) {
-                    // CRServo Logic: Set Power/Direction instead of Position
                     artifactTransfer.setDirection(DcMotorSimple.Direction.FORWARD);
                     artifactTransfer.setPower(1);
                     setPathState(5);
@@ -144,7 +141,7 @@ public class BlueGoalFar extends OpMode {
                         setPathState(3); // Go again
                     } else {
                         flywheelMotor.setPower(0);
-                        follower.followPath(driveToIntake);
+                        follower.followPath(driveToIntake1); //intake1
                         setPathState(6);
                     }
                 }
@@ -158,7 +155,7 @@ public class BlueGoalFar extends OpMode {
         }
     }
 
-    // Helper method to reset the timer every time the state changes
+
     private void setPathState(int state) {
         pathState = state;
         stateTimer.reset();
@@ -167,21 +164,17 @@ public class BlueGoalFar extends OpMode {
     private void moveChamberStep() {
         chamberTargetPos += TICKS_PER_STEP;
         chamberSpinner.setTargetPosition((int) chamberTargetPos);
-        chamberSpinner.setPower(0.6);
+        chamberSpinner.setPower(0.72);
     }
 
     @Override
     public void loop() {
         follower.update();
         autonomousPathUpdate();
-
         telemetry.addData("State", pathState);
         telemetry.addData("Shots", totalShotsFired);
-        telemetry.addData("Follower Busy", follower.isBusy());
-        telemetry.addData("Chamber Pos", chamberSpinner.getCurrentPosition());
         telemetry.update();
     }
-
     @Override
     public void start() {
         setPathState(0);
