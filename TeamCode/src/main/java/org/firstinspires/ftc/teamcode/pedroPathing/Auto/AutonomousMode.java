@@ -71,7 +71,7 @@ public class AutonomousMode extends LinearOpMode {
     // UPDATED: Changed from Power to Velocity based on Drive file
     private static final double SHOOT_VELOCITY = 1298; //1200
 
-    private static final double CHAMBER_WAIT = 2.5; //1.9, 1.0, 1.4, 2.4
+    private static final double CHAMBER_WAIT = 0.6; //1.9, 1.0, 1.4, 2.4
     private static final double ATM_PUSH_TIME_FIRST = 2.0; //2.3
     private static final double ATM_PUSH_TIME_NORMAL = 0.9;
 
@@ -96,12 +96,23 @@ public class AutonomousMode extends LinearOpMode {
     private final Pose BLUE_INTAKE_GPP = new Pose(56, 34, Math.toRadians(-180)); //x=56 y=34
     private final Pose BLUE_INTAKE_PGP = new Pose(56, 58, Math.toRadians(-180)); //y=43
     private final Pose BLUE_INTAKE_PPG = new Pose(56, 82, Math.toRadians(-180)); //y=67
-    
 
     // Blue Intake End (Stop driving here)
-    private final Pose BLUE_INTAKE_GPP_END = new Pose(29, 34, Math.toRadians(-180)); //x35
-    private final Pose BLUE_INTAKE_PGP_END = new Pose(29, 58, Math.toRadians(-180)); //x35
-    private final Pose BLUE_INTAKE_PPG_END = new Pose(35, 82, Math.toRadians(-180));
+    private final Pose BLUE_INTAKE_GPP_END = new Pose(
+        29,
+        34,
+        Math.toRadians(-180)
+    ); //x35
+    private final Pose BLUE_INTAKE_PGP_END = new Pose(
+        29,
+        58,
+        Math.toRadians(-180)
+    ); //x35
+    private final Pose BLUE_INTAKE_PPG_END = new Pose(
+        35,
+        82,
+        Math.toRadians(-180)
+    );
 
     // --- RED COORDINATES ---
     private final Pose RED_START = new Pose(87, 8.5, Math.toRadians(270));
@@ -113,9 +124,21 @@ public class AutonomousMode extends LinearOpMode {
     private final Pose RED_INTAKE_PPG = new Pose(88, 69, Math.toRadians(0));
 
     // Red Intake End (Mirrored X=16 -> X=128, X=9 -> X=135)
-    private final Pose RED_INTAKE_GPP_END = new Pose(109, 36, Math.toRadians(0));
-    private final Pose RED_INTAKE_PGP_END = new Pose(109, 60, Math.toRadians(0));
-    private final Pose RED_INTAKE_PPG_END = new Pose(115, 69, Math.toRadians(0));
+    private final Pose RED_INTAKE_GPP_END = new Pose(
+        109,
+        36,
+        Math.toRadians(0)
+    );
+    private final Pose RED_INTAKE_PGP_END = new Pose(
+        109,
+        60,
+        Math.toRadians(0)
+    );
+    private final Pose RED_INTAKE_PPG_END = new Pose(
+        115,
+        69,
+        Math.toRadians(0)
+    );
 
     // Active Points
     private Pose startPose;
