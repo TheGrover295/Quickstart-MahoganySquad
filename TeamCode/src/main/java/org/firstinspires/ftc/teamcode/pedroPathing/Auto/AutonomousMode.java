@@ -1,5 +1,9 @@
 package org.firstinspires.ftc.teamcode.pedroPathing.Auto;
 
+import com.pedropathing.follower.Follower;
+import com.pedropathing.geometry.BezierLine;
+import com.pedropathing.geometry.Pose;
+import com.pedropathing.paths.PathChain;
 import com.qualcomm.robotcore.eventloop.opmode.Autonomous;
 import com.qualcomm.robotcore.eventloop.opmode.LinearOpMode;
 import com.qualcomm.robotcore.hardware.CRServo;
@@ -9,24 +13,20 @@ import com.qualcomm.robotcore.hardware.DcMotorSimple;
 import com.qualcomm.robotcore.hardware.PIDFCoefficients;
 import com.qualcomm.robotcore.util.ElapsedTime;
 import com.qualcomm.robotcore.util.RobotLog;
-
 import org.firstinspires.ftc.teamcode.pedroPathing.Constants;
 import org.firstinspires.ftc.teamcode.pedroPathing.mechanisms.Limelight;
 import org.firstinspires.ftc.teamcode.pedroPathing.vision.GoalTargeter;
 import org.firstinspires.ftc.teamcode.pedroPathing.vision.MotifDetector;
-
-import com.pedropathing.follower.Follower;
-import com.pedropathing.geometry.BezierLine;
-import com.pedropathing.geometry.Pose;
-import com.pedropathing.paths.PathChain;
 
 @Autonomous(name = "Limelight Far (Motif v5.5.2)", group = "Auto")
 public class AutonomousMode extends LinearOpMode {
 
     // ===================== ALLIANCE SELECTION =====================
     private enum Alliance {
-        RED, BLUE
+        RED,
+        BLUE,
     }
+
     private Alliance selectedAlliance = Alliance.BLUE; // Default
 
     // ===================== SUBSYSTEMS =====================
@@ -54,12 +54,13 @@ public class AutonomousMode extends LinearOpMode {
         SCAN_MOTIF,
         SHOOT_PRELOADS,
         NAV_TO_PRE_INTAKE, // Go to X=48
-        INTAKE_DRIVE,      // Drive to X=16/9 with intake ON
-        PICKUP_BALLS,      // Wait for intake
+        INTAKE_DRIVE, // Drive to X=16/9 with intake ON
+        PICKUP_BALLS, // Wait for intake
         NAV_TO_SHOOT,
         ALIGN_AND_SHOOT,
-        DONE
+        DONE,
     }
+
     private AutoState currentState = AutoState.INIT;
 
     // ===================== CONFIGURATION =====================
@@ -95,6 +96,7 @@ public class AutonomousMode extends LinearOpMode {
     private final Pose BLUE_INTAKE_GPP = new Pose(56, 34, Math.toRadians(-180)); //x=56 y=34
     private final Pose BLUE_INTAKE_PGP = new Pose(56, 58, Math.toRadians(-180)); //y=43
     private final Pose BLUE_INTAKE_PPG = new Pose(56, 82, Math.toRadians(-180)); //y=67
+    
 
     // Blue Intake End (Stop driving here)
     private final Pose BLUE_INTAKE_GPP_END = new Pose(29, 34, Math.toRadians(-180)); //x35
@@ -180,13 +182,27 @@ public class AutonomousMode extends LinearOpMode {
             motifDetector.update(goalTargeter.getVisionData());
 
             switch (currentState) {
-                case SCAN_MOTIF:        runScanMotif(); break;
-                case SHOOT_PRELOADS:    runShootPreloads(); break;
-                case NAV_TO_PRE_INTAKE: runNavToPreIntake(); break;
-                case INTAKE_DRIVE:      runIntakeDrive(); break;
-                case PICKUP_BALLS:      runPickupBalls(); break;
-                case NAV_TO_SHOOT:      runNavToShoot(); break;
-                case ALIGN_AND_SHOOT:   runAlignAndShoot(); break;
+                case SCAN_MOTIF:
+                    runScanMotif();
+                    break;
+                case SHOOT_PRELOADS:
+                    runShootPreloads();
+                    break;
+                case NAV_TO_PRE_INTAKE:
+                    runNavToPreIntake();
+                    break;
+                case INTAKE_DRIVE:
+                    runIntakeDrive();
+                    break;
+                case PICKUP_BALLS:
+                    runPickupBalls();
+                    break;
+                case NAV_TO_SHOOT:
+                    runNavToShoot();
+                    break;
+                case ALIGN_AND_SHOOT:
+                    runAlignAndShoot();
+                    break;
                 case DONE:
                     stopAllMechanisms();
                     follower.breakFollowing();
@@ -203,14 +219,15 @@ public class AutonomousMode extends LinearOpMode {
         intakeMotor = hardwareMap.get(DcMotor.class, "intakeMotor");
         artifactTransfer = hardwareMap.get(CRServo.class, "ATM");
 
-
         flywheelMotor.setDirection(DcMotorSimple.Direction.REVERSE);
         flywheelMotor.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
         flywheelMotor.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
 
-
         PIDFCoefficients pidfNew = new PIDFCoefficients(10, 0, 0, 10); //f=11
-        flywheelMotor.setPIDFCoefficients(DcMotor.RunMode.RUN_USING_ENCODER, pidfNew);
+        flywheelMotor.setPIDFCoefficients(
+            DcMotor.RunMode.RUN_USING_ENCODER,
+            pidfNew
+        );
 
         intakeMotor.setDirection(DcMotorSimple.Direction.REVERSE);
         chamberSpinner.setDirection(DcMotorSimple.Direction.REVERSE);
@@ -231,7 +248,10 @@ public class AutonomousMode extends LinearOpMode {
 
     private void runScanMotif() {
         // Continuously check for confident detection while driving
-        if (detectedMotif == MotifDetector.Motif.UNKNOWN && motifDetector.hasConfidentDetection()) {
+        if (
+            detectedMotif == MotifDetector.Motif.UNKNOWN &&
+            motifDetector.hasConfidentDetection()
+        ) {
             detectedMotif = motifDetector.getDetectedMotif();
             decisionReason = "Confident (Drive)";
             RobotLog.d("AUTO", "Motif Locked (Confident): " + detectedMotif);
@@ -264,11 +284,9 @@ public class AutonomousMode extends LinearOpMode {
         if (!follower.isBusy() && stateTimer.seconds() > 0.3) {
             intakeMotor.setPower(1.0);
 
-
             chamberTargetPos -= BACK_TO_INTAKE_TICKS;
             chamberSpinner.setTargetPosition((int) chamberTargetPos);
             chamberSpinner.setPower(1);
-
 
             intakeSeqStage = 0;
 
@@ -347,8 +365,6 @@ public class AutonomousMode extends LinearOpMode {
     }
 
     private void runNavToShoot() {
-
-
         if (!follower.isBusy() && stateTimer.seconds() > 0.5) {
             intakeMotor.setPower(0);
             startSecondShootingPhase();
@@ -378,20 +394,24 @@ public class AutonomousMode extends LinearOpMode {
     private void runShootingLogic(boolean isSecondPhase) {
         switch (shootSubState) {
             case 0:
-                moveChamberStep();
+                //moveChamberStep(); REMOVED FOR TEST, MAY FIX SPIN AT START
                 shootTimer.reset();
                 shootSubState = 1;
                 break;
             case 1:
                 if (shootTimer.seconds() >= CHAMBER_WAIT) {
-                    artifactTransfer.setDirection(DcMotorSimple.Direction.FORWARD);
+                    artifactTransfer.setDirection(
+                        DcMotorSimple.Direction.FORWARD
+                    );
                     artifactTransfer.setPower(1);
                     shootTimer.reset();
                     shootSubState = 2;
                 }
                 break;
             case 2:
-                double pushTime = (ballsShot == 0 && !isSecondPhase) ? ATM_PUSH_TIME_FIRST : ATM_PUSH_TIME_NORMAL;
+                double pushTime = (ballsShot == 0 && !isSecondPhase)
+                    ? ATM_PUSH_TIME_FIRST
+                    : ATM_PUSH_TIME_NORMAL;
                 if (shootTimer.seconds() >= pushTime) {
                     artifactTransfer.setPower(0);
                     shootSubState = 3;
@@ -456,17 +476,24 @@ public class AutonomousMode extends LinearOpMode {
             }
         }
 
-        RobotLog.d("AUTO", "Targets: Pre=" + preIntakePose.toString() + " | Final=" + finalIntakePose.toString());
+        RobotLog.d(
+            "AUTO",
+            "Targets: Pre=" +
+                preIntakePose.toString() +
+                " | Final=" +
+                finalIntakePose.toString()
+        );
 
         // Build first leg: Shoot -> Pre-Intake
         buildAndFollowPath(shootPose, preIntakePose);
     }
 
     private void buildAndFollowPath(Pose start, Pose end) {
-        currentPath = follower.pathBuilder()
-                .addPath(new BezierLine(start, end))
-                .setLinearHeadingInterpolation(start.getHeading(), end.getHeading())
-                .build();
+        currentPath = follower
+            .pathBuilder()
+            .addPath(new BezierLine(start, end))
+            .setLinearHeadingInterpolation(start.getHeading(), end.getHeading())
+            .build();
         follower.followPath(currentPath);
     }
 
