@@ -18,7 +18,7 @@ import org.firstinspires.ftc.teamcode.pedroPathing.mechanisms.Limelight;
 import org.firstinspires.ftc.teamcode.pedroPathing.vision.GoalTargeter;
 import org.firstinspires.ftc.teamcode.pedroPathing.vision.MotifDetector;
 
-@Autonomous(name = "Limelight Far (Motif v5.5.2)", group = "Auto")
+@Autonomous(name = "Limelight Far (Motif v5.5.3)", group = "Auto")
 public class AutonomousMode extends LinearOpMode {
 
     // ===================== ALLIANCE SELECTION =====================
@@ -71,7 +71,7 @@ public class AutonomousMode extends LinearOpMode {
     // UPDATED: Changed from Power to Velocity based on Drive file
     private static final double SHOOT_VELOCITY = 1298; //1200
 
-    private static final double CHAMBER_WAIT = 0.6; //1.9, 1.0, 1.4, 2.4
+    private static final double CHAMBER_WAIT = 0.9; //1.9, 1.0, 1.4, 2.4
     private static final double ATM_PUSH_TIME_FIRST = 2.0; //2.3
     private static final double ATM_PUSH_TIME_NORMAL = 0.9;
 
@@ -98,47 +98,23 @@ public class AutonomousMode extends LinearOpMode {
     private final Pose BLUE_INTAKE_PPG = new Pose(56, 82, Math.toRadians(-180)); //y=67
 
     // Blue Intake End (Stop driving here)
-    private final Pose BLUE_INTAKE_GPP_END = new Pose(
-        29,
-        34,
-        Math.toRadians(-180)
-    ); //x35
-    private final Pose BLUE_INTAKE_PGP_END = new Pose(
-        29,
-        58,
-        Math.toRadians(-180)
-    ); //x35
-    private final Pose BLUE_INTAKE_PPG_END = new Pose(
-        35,
-        82,
-        Math.toRadians(-180)
-    );
+    private final Pose BLUE_INTAKE_GPP_END = new Pose(29, 34, Math.toRadians(-180)); //x35
+    private final Pose BLUE_INTAKE_PGP_END = new Pose(29, 58, Math.toRadians(-180)); //x35
+    private final Pose BLUE_INTAKE_PPG_END = new Pose(35, 82, Math.toRadians(-180));
 
     // --- RED COORDINATES ---
     private final Pose RED_START = new Pose(87, 8.5, Math.toRadians(270));
     private final Pose RED_SHOOT = new Pose(88, 19, Math.toRadians(250));
 
     // Red Pre-Intake (Mirrored X=48 -> X=88, Mirrored Y)
-    private final Pose RED_INTAKE_GPP = new Pose(88, 36, Math.toRadians(0));
-    private final Pose RED_INTAKE_PGP = new Pose(88, 60, Math.toRadians(0));
-    private final Pose RED_INTAKE_PPG = new Pose(88, 69, Math.toRadians(0));
+    private final Pose RED_INTAKE_GPP = new Pose(88, 19.5, Math.toRadians(0));
+    private final Pose RED_INTAKE_PGP = new Pose(88, 44.5, Math.toRadians(0));
+    private final Pose RED_INTAKE_PPG = new Pose(88, 68, Math.toRadians(0)); //y=67
 
     // Red Intake End (Mirrored X=16 -> X=128, X=9 -> X=135)
-    private final Pose RED_INTAKE_GPP_END = new Pose(
-        109,
-        36,
-        Math.toRadians(0)
-    );
-    private final Pose RED_INTAKE_PGP_END = new Pose(
-        109,
-        60,
-        Math.toRadians(0)
-    );
-    private final Pose RED_INTAKE_PPG_END = new Pose(
-        115,
-        69,
-        Math.toRadians(0)
-    );
+    private final Pose RED_INTAKE_GPP_END = new Pose(109, 19.5, Math.toRadians(0));
+    private final Pose RED_INTAKE_PGP_END = new Pose(109, 44.5, Math.toRadians(0));
+    private final Pose RED_INTAKE_PPG_END = new Pose(115, 68, Math.toRadians(0));
 
     // Active Points
     private Pose startPose;
@@ -173,7 +149,7 @@ public class AutonomousMode extends LinearOpMode {
             motifDetector.update(goalTargeter.getVisionData());
 
             // Telemetry
-            telemetry.addLine("=== 6-BALL AUTO (ALLIANCE SELECTION) ===");
+            telemetry.addLine("=== LIMELIGHT FAR (ALLIANCE SELECTION) ===");
             telemetry.addData("Selected Alliance", selectedAlliance);
             telemetry.addLine("LB = RED | RB = BLUE");
             telemetry.addLine();
@@ -246,7 +222,7 @@ public class AutonomousMode extends LinearOpMode {
         flywheelMotor.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
         flywheelMotor.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
 
-        PIDFCoefficients pidfNew = new PIDFCoefficients(10, 0, 0, 10); //f=11
+        PIDFCoefficients pidfNew = new PIDFCoefficients(11, 0, 0, 10); //f=11
         flywheelMotor.setPIDFCoefficients(
             DcMotor.RunMode.RUN_USING_ENCODER,
             pidfNew
@@ -417,7 +393,11 @@ public class AutonomousMode extends LinearOpMode {
     private void runShootingLogic(boolean isSecondPhase) {
         switch (shootSubState) {
             case 0:
-                //moveChamberStep(); REMOVED FOR TEST, MAY FIX SPIN AT START
+                // Logic: Only spin the chamber if it's NOT the first ball of the phase.
+
+                if (ballsShot > 0) {
+                    moveChamberStep();
+                }
                 shootTimer.reset();
                 shootSubState = 1;
                 break;
