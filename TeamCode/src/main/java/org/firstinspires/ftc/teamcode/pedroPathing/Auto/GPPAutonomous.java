@@ -51,6 +51,7 @@ public class GPPAutonomous extends LinearOpMode {
         PICKUP_BALLS,
         NAV_TO_SHOOT,
         ALIGN_AND_SHOOT,
+        LEAVE_MARK,
         DONE
     }
     private AutoState currentState = AutoState.INIT;
@@ -59,8 +60,8 @@ public class GPPAutonomous extends LinearOpMode {
     private static final double NAV_TIMEOUT_SEC = 5.0;
     private static final double PICKUP_TIMEOUT_SEC = 2.0;
 
-    private static final double SHOOT_VELOCITY = 1200;
-    private static final double CHAMBER_WAIT = 2.5;
+    private static final double SHOOT_VELOCITY = 1298;
+    private static final double CHAMBER_WAIT = 1.2; //change if needed
     private static final double ATM_PUSH_TIME_FIRST = 2.0;
     private static final double ATM_PUSH_TIME_NORMAL = 0.9;
 
@@ -87,6 +88,9 @@ public class GPPAutonomous extends LinearOpMode {
     private final Pose RED_SHOOT = new Pose(88, 19, Math.toRadians(250));
     private final Pose RED_INTAKE_GPP = new Pose(88, 36, Math.toRadians(0));
     private final Pose RED_INTAKE_GPP_END = new Pose(109, 36, Math.toRadians(0));
+
+    private final Pose LEAVE_MARK_RED = new Pose(88, 40, Math.toRadians(270));
+    private final Pose LEAVE_MARK_BLUE = new Pose(56, 40, Math.toRadians(270));
 
     // Active Points
     private Pose startPose;
@@ -161,6 +165,7 @@ public class GPPAutonomous extends LinearOpMode {
                 case PICKUP_BALLS:      runPickupBalls(); break;
                 case NAV_TO_SHOOT:      runNavToShoot(); break;
                 case ALIGN_AND_SHOOT:   runAlignAndShoot(); break;
+                case LEAVE_MARK:        runLeaveMark(); break;
                 case DONE:
                     stopAllMechanisms();
                     follower.breakFollowing();
@@ -307,7 +312,10 @@ public class GPPAutonomous extends LinearOpMode {
     private void runShootingLogic(boolean isSecondPhase) {
         switch (shootSubState) {
             case 0:
-                moveChamberStep();
+                // Only spin the chamber if it's NOT the first ball of the phase.
+                if (ballsShot > 0) {
+                    moveChamberStep();
+                }
                 shootTimer.reset();
                 shootSubState = 1;
                 break;
@@ -335,12 +343,21 @@ public class GPPAutonomous extends LinearOpMode {
                         buildAndFollowPath(shootPose, preIntakePose);
                         transitionTo(AutoState.NAV_TO_PRE_INTAKE);
                     } else {
-                        transitionTo(AutoState.DONE);
+                        // All balls shot in second phase, go to LEAVE_MARK
+                        Pose leavePose = (selectedAlliance == Alliance.BLUE) ? LEAVE_MARK_BLUE : LEAVE_MARK_RED;
+                        buildAndFollowPath(shootPose, leavePose);
+                        transitionTo(AutoState.LEAVE_MARK);
                     }
                 } else {
                     shootSubState = 0;
                 }
                 break;
+        }
+    }
+
+    private void runLeaveMark() {
+        if (!follower.isBusy()) {
+            transitionTo(AutoState.DONE);
         }
     }
 

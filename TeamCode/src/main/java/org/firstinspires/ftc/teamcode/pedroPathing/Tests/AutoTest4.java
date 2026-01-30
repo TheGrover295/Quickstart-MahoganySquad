@@ -1,4 +1,4 @@
-package org.firstinspires.ftc.teamcode.pedroPathing.Auto;
+package org.firstinspires.ftc.teamcode.pedroPathing.Tests;
 
 import com.pedropathing.follower.Follower;
 import com.pedropathing.geometry.BezierLine;
@@ -18,8 +18,8 @@ import org.firstinspires.ftc.teamcode.pedroPathing.mechanisms.Limelight;
 import org.firstinspires.ftc.teamcode.pedroPathing.vision.GoalTargeter;
 import org.firstinspires.ftc.teamcode.pedroPathing.vision.MotifDetector;
 
-@Autonomous(name = "Limelight Far (Motif v5.5.4)", group = "Auto")
-public class AutonomousMode extends LinearOpMode {
+@Autonomous(name = "AutoTest4", group = "Tests")
+public class AutoTest4 extends LinearOpMode {
 
     // ===================== ALLIANCE SELECTION =====================
     private enum Alliance {
@@ -58,7 +58,6 @@ public class AutonomousMode extends LinearOpMode {
         PICKUP_BALLS, // Wait for intake
         NAV_TO_SHOOT,
         ALIGN_AND_SHOOT,
-        LEAVE_MARK,
         DONE,
     }
 
@@ -70,9 +69,9 @@ public class AutonomousMode extends LinearOpMode {
     private static final double PICKUP_TIMEOUT_SEC = 2.0;
 
     // UPDATED: Changed from Power to Velocity based on Drive file
-    private static final double SHOOT_VELOCITY = 1280; //1298
+    private static final double SHOOT_VELOCITY = 1298; //1200
 
-    private static final double CHAMBER_WAIT = 1.5; //1.9, 1.0, 1.4, 2.4
+    private static final double CHAMBER_WAIT = 0.9; //1.9, 1.0, 1.4, 2.4
     private static final double ATM_PUSH_TIME_FIRST = 2.0; //2.3
     private static final double ATM_PUSH_TIME_NORMAL = 0.9;
 
@@ -84,7 +83,7 @@ public class AutonomousMode extends LinearOpMode {
 
     // Intake Sequencing Variables
     private int intakeSeqStage = 0;
-    private static final double INTAKE_SPIN_DELAY = 0.400; // 200ms
+    private static final double INTAKE_SPIN_DELAY = 0.200; // 500ms
 
     // ===================== FIELD COORDINATES =====================
 
@@ -94,31 +93,34 @@ public class AutonomousMode extends LinearOpMode {
     private final Pose BLUE_SHOOT = new Pose(56, 15, Math.toRadians(292)); //x=56 y=17, HEADING = 297
 
     // Blue Pre-Intake (Start driving from here)
-    private final Pose BLUE_INTAKE_GPP = new Pose(56, 34, Math.toRadians(-180)); //x=56 y=34
-    private final Pose BLUE_INTAKE_PGP = new Pose(56, 58, Math.toRadians(-180)); //y=43
-    private final Pose BLUE_INTAKE_PPG = new Pose(56, 82, Math.toRadians(-180)); //y=67
+    private final Pose BLUE_INTAKE_GPP = new Pose(56, 36, Math.toRadians(-180)); //x=56 y=34
+    private final Pose BLUE_INTAKE_PGP = new Pose(56, 60, Math.toRadians(-180)); //y=43
+    private final Pose BLUE_INTAKE_PPG = new Pose(56, 84, Math.toRadians(-180)); //y=67
 
     // Blue Intake End (Stop driving here)
-    private final Pose BLUE_INTAKE_GPP_END = new Pose(29, 34, Math.toRadians(-180)); //x35
-    private final Pose BLUE_INTAKE_PGP_END = new Pose(29, 58, Math.toRadians(-180)); //x35
-    private final Pose BLUE_INTAKE_PPG_END = new Pose(35, 82, Math.toRadians(-180));
+    private final Pose BLUE_INTAKE_GPP_END = new Pose(19, 36, Math.toRadians(-180)); //x35
+    private final Pose BLUE_INTAKE_PGP_END = new Pose(19, 60, Math.toRadians(-180)); //x35
+    private final Pose BLUE_INTAKE_PPG_END = new Pose(16, 84, Math.toRadians(-180));
 
     // --- RED COORDINATES ---
     private final Pose RED_START = new Pose(87, 8.5, Math.toRadians(270));
     private final Pose RED_SHOOT = new Pose(88, 19, Math.toRadians(250));
 
     // Red Pre-Intake (Mirrored X=48 -> X=88, Mirrored Y)
-    private final Pose RED_INTAKE_GPP = new Pose(88, 19.5, Math.toRadians(0));
-    private final Pose RED_INTAKE_PGP = new Pose(88, 44.5, Math.toRadians(0));
-    private final Pose RED_INTAKE_PPG = new Pose(88, 68, Math.toRadians(0)); //y=67
+    private final Pose RED_INTAKE_GPP = new Pose(88, 36, Math.toRadians(0));
+    private final Pose RED_INTAKE_PGP = new Pose(88, 60, Math.toRadians(0));
+    private final Pose RED_INTAKE_PPG = new Pose(88, 84, Math.toRadians(0)); //y=67
 
     // Red Intake End (Mirrored X=16 -> X=128, X=9 -> X=135)
-    private final Pose RED_INTAKE_GPP_END = new Pose(109, 19.5, Math.toRadians(0));
-    private final Pose RED_INTAKE_PGP_END = new Pose(109, 44.5, Math.toRadians(0));
-    private final Pose RED_INTAKE_PPG_END = new Pose(115, 68, Math.toRadians(0));
+    private final Pose RED_INTAKE_GPP_END = new Pose(128, 36, Math.toRadians(0));
+    private final Pose RED_INTAKE_PGP_END = new Pose(128, 60, Math.toRadians(0));
+    private final Pose RED_INTAKE_PPG_END = new Pose(126, 84, Math.toRadians(0));
 
-    private final Pose LEAVE_MARK_RED = new Pose(107.977, 13.269, Math.toRadians(270));
-    private final Pose LEAVE_MARK_BLUE = new Pose(37.269, 12.946, Math.toRadians(270));
+// drive end
+
+    private final Pose BLUE_SHOOT_END = new Pose(56, 36, Math.toRadians(270));
+    private final Pose RED_SHOOT_END = new Pose(88, 36, Math.toRadians(0));
+
 
     // Active Points
     private Pose startPose;
@@ -206,9 +208,6 @@ public class AutonomousMode extends LinearOpMode {
                 case ALIGN_AND_SHOOT:
                     runAlignAndShoot();
                     break;
-                case LEAVE_MARK:
-                    runLeaveMark();
-                    break;
                 case DONE:
                     stopAllMechanisms();
                     follower.breakFollowing();
@@ -229,10 +228,10 @@ public class AutonomousMode extends LinearOpMode {
         flywheelMotor.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
         flywheelMotor.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
 
-        PIDFCoefficients pidfNew = new PIDFCoefficients(11, 0, 0, 10); //f=11 p=11
+        PIDFCoefficients pidfNew = new PIDFCoefficients(11, 0, 0, 10); //f=11
         flywheelMotor.setPIDFCoefficients(
-            DcMotor.RunMode.RUN_USING_ENCODER,
-            pidfNew
+                DcMotor.RunMode.RUN_USING_ENCODER,
+                pidfNew
         );
 
         intakeMotor.setDirection(DcMotorSimple.Direction.REVERSE);
@@ -255,8 +254,8 @@ public class AutonomousMode extends LinearOpMode {
     private void runScanMotif() {
         // Continuously check for confident detection while driving
         if (
-            detectedMotif == MotifDetector.Motif.UNKNOWN &&
-            motifDetector.hasConfidentDetection()
+                detectedMotif == MotifDetector.Motif.UNKNOWN &&
+                        motifDetector.hasConfidentDetection()
         ) {
             detectedMotif = motifDetector.getDetectedMotif();
             decisionReason = "Confident (Drive)";
@@ -309,7 +308,7 @@ public class AutonomousMode extends LinearOpMode {
 
             intakeSeqStage = 0;
 
-            buildAndFollowPath(preIntakePose, finalIntakePose);
+            buildAndFollowPath(follower.getPose(), finalIntakePose);
             transitionTo(AutoState.INTAKE_DRIVE);
         }
     }
@@ -331,7 +330,7 @@ public class AutonomousMode extends LinearOpMode {
 
         if (stateTimer.seconds() > PICKUP_TIMEOUT_SEC) {
             //intakeMotor.setPower(0);
-            buildAndFollowPath(finalIntakePose, shootPose);
+            buildAndFollowPath(follower.getPose(), shootPose);
             flywheelMotor.setVelocity(SHOOT_VELOCITY); // Start flywheel while moving back
             transitionTo(AutoState.NAV_TO_SHOOT);
         }
@@ -411,7 +410,7 @@ public class AutonomousMode extends LinearOpMode {
             case 1:
                 if (shootTimer.seconds() >= CHAMBER_WAIT) {
                     artifactTransfer.setDirection(
-                        DcMotorSimple.Direction.FORWARD
+                            DcMotorSimple.Direction.FORWARD
                     );
                     artifactTransfer.setPower(1);
                     shootTimer.reset();
@@ -420,8 +419,8 @@ public class AutonomousMode extends LinearOpMode {
                 break;
             case 2:
                 double pushTime = (ballsShot == 0 && !isSecondPhase)
-                    ? ATM_PUSH_TIME_FIRST
-                    : ATM_PUSH_TIME_NORMAL;
+                        ? ATM_PUSH_TIME_FIRST
+                        : ATM_PUSH_TIME_NORMAL;
                 if (shootTimer.seconds() >= pushTime) {
                     artifactTransfer.setPower(0);
                     shootSubState = 3;
@@ -435,21 +434,12 @@ public class AutonomousMode extends LinearOpMode {
                         setTargetForMotif();
                         transitionTo(AutoState.NAV_TO_PRE_INTAKE);
                     } else {
-                        // All balls shot in second phase, go to LEAVE_MARK
-                        Pose leavePose = (selectedAlliance == Alliance.BLUE) ? LEAVE_MARK_BLUE : LEAVE_MARK_RED;
-                        buildAndFollowPath(shootPose, leavePose);
-                        transitionTo(AutoState.LEAVE_MARK);
+                        transitionTo(AutoState.DONE);
                     }
                 } else {
                     shootSubState = 0;
                 }
                 break;
-        }
-    }
-
-    private void runLeaveMark() {
-        if (!follower.isBusy()) {
-            transitionTo(AutoState.DONE);
         }
     }
 
@@ -496,23 +486,24 @@ public class AutonomousMode extends LinearOpMode {
         }
 
         RobotLog.d(
-            "AUTO",
-            "Targets: Pre=" +
-                preIntakePose.toString() +
-                " | Final=" +
-                finalIntakePose.toString()
+                "AUTO",
+                "Targets: Pre=" +
+                        preIntakePose.toString() +
+                        " | Final=" +
+                        finalIntakePose.toString()
         );
 
         // Build first leg: Shoot -> Pre-Intake
-        buildAndFollowPath(shootPose, preIntakePose);
+        Pose current = follower.getPose();   // or getPoseEstimate()
+        buildAndFollowPath(current, preIntakePose);
     }
 
     private void buildAndFollowPath(Pose start, Pose end) {
         currentPath = follower
-            .pathBuilder()
-            .addPath(new BezierLine(start, end))
-            .setLinearHeadingInterpolation(start.getHeading(), end.getHeading())
-            .build();
+                .pathBuilder()
+                .addPath(new BezierLine(start, end))
+                .setLinearHeadingInterpolation(start.getHeading(), end.getHeading())
+                .build();
         follower.followPath(currentPath);
     }
 

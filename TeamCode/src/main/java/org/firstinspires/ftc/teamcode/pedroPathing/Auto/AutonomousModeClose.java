@@ -18,7 +18,7 @@ import org.firstinspires.ftc.teamcode.pedroPathing.mechanisms.Limelight;
 import org.firstinspires.ftc.teamcode.pedroPathing.vision.GoalTargeter;
 import org.firstinspires.ftc.teamcode.pedroPathing.vision.MotifDetector; //cool2
 
-@Autonomous(name = "Limelight Close (Motif v1.1.1)", group = "Auto")
+@Autonomous(name = "Limelight Close (Motif v1.1.2)", group = "Auto")
 public class AutonomousModeClose extends LinearOpMode {
 
     // ===================== ALLIANCE SELECTION =====================
@@ -58,6 +58,7 @@ public class AutonomousModeClose extends LinearOpMode {
         PICKUP_BALLS, // Wait for intake
         NAV_TO_SHOOT,
         ALIGN_AND_SHOOT,
+        LEAVE_MARK,
         DONE,
     }
 
@@ -90,16 +91,8 @@ public class AutonomousModeClose extends LinearOpMode {
 
     // --- BLUE COORDINATES ---
     // --- CHANGE BACK IF NEEDED ---
-    private final Pose BLUE_START = new Pose(
-        20.968,
-        122.296,
-        Math.toRadians(325)
-    ); //x=62.13 y=7.03
-    private final Pose BLUE_SHOOT = new Pose(
-        59.686,
-        84.116,
-        Math.toRadians(318)
-    ); //x=56 y=17, HEADING = 297
+    private final Pose BLUE_START = new Pose(20.968, 122.296, Math.toRadians(325)); //x=62.13 y=7.03
+    private final Pose BLUE_SHOOT = new Pose(59.686, 84.116, Math.toRadians(318)); //x=56 y=17, HEADING = 297
 
     // Blue Pre-Intake (Start driving from here)
     private final Pose BLUE_INTAKE_GPP = new Pose(56, 34, Math.toRadians(-180)); //x=56 y=34
@@ -124,7 +117,9 @@ public class AutonomousModeClose extends LinearOpMode {
     private final Pose RED_INTAKE_GPP_END = new Pose(108, 32, Math.toRadians(0));
     private final Pose RED_INTAKE_PGP_END = new Pose(113, 43, Math.toRadians(0));
     private final Pose RED_INTAKE_PPG_END = new Pose(108, 65, Math.toRadians(0));
-    //private final Pose LEAVE_MARK = new Pose(97, 73, Math.toRadians(225));
+
+    private final Pose LEAVE_MARK_RED = new Pose(97, 73, Math.toRadians(225));
+    private final Pose LEAVE_MARK_BLUE = new Pose(48.569, 71.869, Math.toRadians(318));
 
     // Active Points
     private Pose startPose;
@@ -211,6 +206,9 @@ public class AutonomousModeClose extends LinearOpMode {
                     break;
                 case ALIGN_AND_SHOOT:
                     runAlignAndShoot();
+                    break;
+                case LEAVE_MARK:
+                    runLeaveMark();
                     break;
                 case DONE:
                     stopAllMechanisms();
@@ -402,7 +400,10 @@ public class AutonomousModeClose extends LinearOpMode {
     private void runShootingLogic(boolean isSecondPhase) {
         switch (shootSubState) {
             case 0:
-                moveChamberStep();
+                // Only spin the chamber if it's NOT the first ball of the phase.
+                if (ballsShot > 0) {
+                    moveChamberStep();
+                }
                 shootTimer.reset();
                 shootSubState = 1;
                 break;
@@ -433,12 +434,21 @@ public class AutonomousModeClose extends LinearOpMode {
                         setTargetForMotif();
                         transitionTo(AutoState.NAV_TO_PRE_INTAKE);
                     } else {
-                        transitionTo(AutoState.DONE);
+                        // All balls shot in second phase, go to LEAVE_MARK
+                        Pose leavePose = (selectedAlliance == Alliance.BLUE) ? LEAVE_MARK_BLUE : LEAVE_MARK_RED;
+                        buildAndFollowPath(shootPose, leavePose);
+                        transitionTo(AutoState.LEAVE_MARK);
                     }
                 } else {
                     shootSubState = 0;
                 }
                 break;
+        }
+    }
+
+    private void runLeaveMark() {
+        if (!follower.isBusy()) {
+            transitionTo(AutoState.DONE);
         }
     }
 
