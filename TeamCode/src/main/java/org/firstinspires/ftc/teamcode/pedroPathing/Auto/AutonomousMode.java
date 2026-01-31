@@ -72,8 +72,9 @@ public class AutonomousMode extends LinearOpMode {
     // UPDATED: Changed from Power to Velocity based on Drive file
     private static final double SHOOT_VELOCITY = 1280; //1298
 
-    private static final double CHAMBER_WAIT = 1.5; //1.9, 1.0, 1.4, 2.4
-    private static final double ATM_PUSH_TIME_FIRST = 2.0; //2.3
+    private static final double CHAMBER_WAIT = 1.9; //1.9, 1.0, 1.4, 2.4
+    private static final double START_WAIT = 2.5;
+    private static final double ATM_PUSH_TIME_FIRST = 1.8; //2.0
     private static final double ATM_PUSH_TIME_NORMAL = 0.9;
 
     // --- Chamber Stepper Variables ---
@@ -91,7 +92,7 @@ public class AutonomousMode extends LinearOpMode {
     // --- BLUE COORDINATES ---
     // --- CHANGE BACK IF NEEDED ---
     private final Pose BLUE_START = new Pose(57, 8.5, Math.toRadians(270)); //x=62.13 y=7.03
-    private final Pose BLUE_SHOOT = new Pose(56, 15, Math.toRadians(292)); //x=56 y=17, HEADING = 297
+    private final Pose BLUE_SHOOT = new Pose(56, 15, Math.toRadians(293)); //x=56 y=17, HEADING = 297
 
     // Blue Pre-Intake (Start driving from here)
     private final Pose BLUE_INTAKE_GPP = new Pose(56, 34, Math.toRadians(-180)); //x=56 y=34
@@ -99,9 +100,9 @@ public class AutonomousMode extends LinearOpMode {
     private final Pose BLUE_INTAKE_PPG = new Pose(56, 82, Math.toRadians(-180)); //y=67
 
     // Blue Intake End (Stop driving here)
-    private final Pose BLUE_INTAKE_GPP_END = new Pose(29, 34, Math.toRadians(-180)); //x35
-    private final Pose BLUE_INTAKE_PGP_END = new Pose(29, 58, Math.toRadians(-180)); //x35
-    private final Pose BLUE_INTAKE_PPG_END = new Pose(35, 82, Math.toRadians(-180));
+    private final Pose BLUE_INTAKE_GPP_END = new Pose(25, 34, Math.toRadians(-180)); //x35
+    private final Pose BLUE_INTAKE_PGP_END = new Pose(25, 58, Math.toRadians(-180)); //x35
+    private final Pose BLUE_INTAKE_PPG_END = new Pose(35, 83, Math.toRadians(-180));
 
     // --- RED COORDINATES ---
     private final Pose RED_START = new Pose(87, 8.5, Math.toRadians(270));
@@ -229,7 +230,7 @@ public class AutonomousMode extends LinearOpMode {
         flywheelMotor.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
         flywheelMotor.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
 
-        PIDFCoefficients pidfNew = new PIDFCoefficients(11, 0, 0, 10); //f=11 p=11
+        PIDFCoefficients pidfNew = new PIDFCoefficients(10, 0, 0, 9); //f=10 p=11
         flywheelMotor.setPIDFCoefficients(
             DcMotor.RunMode.RUN_USING_ENCODER,
             pidfNew
@@ -409,7 +410,8 @@ public class AutonomousMode extends LinearOpMode {
                 shootSubState = 1;
                 break;
             case 1:
-                if (shootTimer.seconds() >= CHAMBER_WAIT) {
+                double currentWait = (ballsShot == 0) ? START_WAIT : CHAMBER_WAIT;
+                if (shootTimer.seconds() >= currentWait) {
                     artifactTransfer.setDirection(
                         DcMotorSimple.Direction.FORWARD
                     );
