@@ -100,8 +100,8 @@ public class AutonomousModeClose extends LinearOpMode {
     private final Pose BLUE_INTAKE_PPG = new Pose(56, 82, Math.toRadians(-180)); //y=67
 
     // Blue Intake End (Stop driving here)
-    private final Pose BLUE_INTAKE_GPP_END = new Pose(29, 34, Math.toRadians(-180)); //x35
-    private final Pose BLUE_INTAKE_PGP_END = new Pose(35, 67, Math.toRadians(-180)); //x35
+    private final Pose BLUE_INTAKE_GPP_END = new Pose(25, 34, Math.toRadians(-180)); //x35
+    private final Pose BLUE_INTAKE_PGP_END = new Pose(25, 67, Math.toRadians(-180)); //x35
     private final Pose BLUE_INTAKE_PPG_END = new Pose(35, 82, Math.toRadians(-180));
 
     // --- RED COORDINATES ---
@@ -114,9 +114,9 @@ public class AutonomousModeClose extends LinearOpMode {
     private final Pose RED_INTAKE_PPG = new Pose(82, 65, Math.toRadians(0));
 
     // Red Intake End (Mirrored X=16 -> X=128, X=9 -> X=135)
-    private final Pose RED_INTAKE_GPP_END = new Pose(108, 32, Math.toRadians(0));
-    private final Pose RED_INTAKE_PGP_END = new Pose(113, 43, Math.toRadians(0));
-    private final Pose RED_INTAKE_PPG_END = new Pose(108, 65, Math.toRadians(0));
+    private final Pose RED_INTAKE_GPP_END = new Pose(112, 32, Math.toRadians(0));
+    private final Pose RED_INTAKE_PGP_END = new Pose(112, 43, Math.toRadians(0));
+    private final Pose RED_INTAKE_PPG_END = new Pose(115, 65, Math.toRadians(0));
 
     private final Pose LEAVE_MARK_RED = new Pose(97, 73, Math.toRadians(225));
     private final Pose LEAVE_MARK_BLUE = new Pose(48.569, 71.869, Math.toRadians(318));
@@ -230,7 +230,7 @@ public class AutonomousModeClose extends LinearOpMode {
         flywheelMotor.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
         flywheelMotor.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
 
-        PIDFCoefficients pidfNew = new PIDFCoefficients(12, 0, 0, 10); //f=11 p =10
+        PIDFCoefficients pidfNew = new PIDFCoefficients(11, 0, 0, 9.6); //f=11 p =10
         flywheelMotor.setPIDFCoefficients(
             DcMotor.RunMode.RUN_USING_ENCODER,
             pidfNew

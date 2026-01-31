@@ -18,6 +18,7 @@ import org.firstinspires.ftc.teamcode.pedroPathing.mechanisms.Limelight;
 import org.firstinspires.ftc.teamcode.pedroPathing.vision.GoalTargeter;
 import org.firstinspires.ftc.teamcode.pedroPathing.vision.MotifDetector;
 
+
 @Autonomous(name = "Limelight Far (Motif v5.5.4)", group = "Auto")
 public class AutonomousMode extends LinearOpMode {
 
@@ -106,17 +107,17 @@ public class AutonomousMode extends LinearOpMode {
 
     // --- RED COORDINATES ---
     private final Pose RED_START = new Pose(87, 8.5, Math.toRadians(270));
-    private final Pose RED_SHOOT = new Pose(88, 19, Math.toRadians(250));
+    private final Pose RED_SHOOT = new Pose(88, 19, Math.toRadians(245)); //250
 
     // Red Pre-Intake (Mirrored X=48 -> X=88, Mirrored Y)
-    private final Pose RED_INTAKE_GPP = new Pose(88, 19.5, Math.toRadians(0));
+    private final Pose RED_INTAKE_GPP = new Pose(90, 19.5, Math.toRadians(0));
     private final Pose RED_INTAKE_PGP = new Pose(88, 44.5, Math.toRadians(0));
     private final Pose RED_INTAKE_PPG = new Pose(88, 68, Math.toRadians(0)); //y=67
 
     // Red Intake End (Mirrored X=16 -> X=128, X=9 -> X=135)
-    private final Pose RED_INTAKE_GPP_END = new Pose(109, 19.5, Math.toRadians(0));
-    private final Pose RED_INTAKE_PGP_END = new Pose(109, 44.5, Math.toRadians(0));
-    private final Pose RED_INTAKE_PPG_END = new Pose(115, 68, Math.toRadians(0));
+    private final Pose RED_INTAKE_GPP_END = new Pose(132, 19.5, Math.toRadians(0)); //x=109
+    private final Pose RED_INTAKE_PGP_END = new Pose(132, 44.5, Math.toRadians(0));
+    private final Pose RED_INTAKE_PPG_END = new Pose(127, 68, Math.toRadians(0));
 
     private final Pose LEAVE_MARK_RED = new Pose(107.977, 13.269, Math.toRadians(270));
     private final Pose LEAVE_MARK_BLUE = new Pose(37.269, 12.946, Math.toRadians(270));
@@ -230,7 +231,8 @@ public class AutonomousMode extends LinearOpMode {
         flywheelMotor.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
         flywheelMotor.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
 
-        PIDFCoefficients pidfNew = new PIDFCoefficients(10, 0, 0, 9); //f=10 p=11
+        PIDFCoefficients pidfNew = new PIDFCoefficients(10.5, 0, 0, 9.2); //f=10 p=11
+
         flywheelMotor.setPIDFCoefficients(
             DcMotor.RunMode.RUN_USING_ENCODER,
             pidfNew
@@ -366,6 +368,14 @@ public class AutonomousMode extends LinearOpMode {
                 }
                 break;
             case 3:
+                // Wait for delay, then Third ball spin
+                if (intakeSeqTimer.seconds() >= INTAKE_SPIN_DELAY) {
+                    moveChamberStep();
+                    intakeSeqTimer.reset();
+                    intakeSeqStage = 4;
+                }
+                break;
+            case 4:
                 // Done
                 break;
         }
@@ -537,6 +547,7 @@ public class AutonomousMode extends LinearOpMode {
 
     private void updateTelemetry() {
         telemetry.addData("State", currentState);
+
         telemetry.addData("Alliance", selectedAlliance);
         telemetry.addData("Motif", detectedMotif);
         // Added Velocity check
