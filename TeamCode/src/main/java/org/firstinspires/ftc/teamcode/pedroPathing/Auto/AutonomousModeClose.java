@@ -85,7 +85,7 @@ public class AutonomousModeClose extends LinearOpMode {
     // Intake Sequencing Variables
     private int intakeSeqStage = 0;
     private static final double INTAKE_SPIN_DELAY = 0.200; // 500ms
-    private static final double INTAKE_FIRST_DELAY = 0.400;
+    private static final double INTAKE_FIRST_DELAY = 0.700;
 
     // ===================== FIELD COORDINATES =====================
 
@@ -110,13 +110,13 @@ public class AutonomousModeClose extends LinearOpMode {
 
     // Red Pre-Intake (Mirrored X=48 -> X=88, Mirrored Y)
     private final Pose RED_INTAKE_GPP = new Pose(82, 36, Math.toRadians(0));
-    private final Pose RED_INTAKE_PGP = new Pose(84, 43, Math.toRadians(0)); //x=82
-    private final Pose RED_INTAKE_PPG = new Pose(82, 65, Math.toRadians(0));
+    private final Pose RED_INTAKE_PGP = new Pose(80, 42, Math.toRadians(0)); //x=82
+    private final Pose RED_INTAKE_PPG = new Pose(82, 64, Math.toRadians(0));
 
     // Red Intake End (Mirrored X=16 -> X=128, X=9 -> X=135)
     private final Pose RED_INTAKE_GPP_END = new Pose(112, 32, Math.toRadians(0));
-    private final Pose RED_INTAKE_PGP_END = new Pose(112, 43, Math.toRadians(0));
-    private final Pose RED_INTAKE_PPG_END = new Pose(115, 65, Math.toRadians(0));
+    private final Pose RED_INTAKE_PGP_END = new Pose(112, 42, Math.toRadians(0));
+    private final Pose RED_INTAKE_PPG_END = new Pose(115, 64, Math.toRadians(0));
 
     private final Pose LEAVE_MARK_RED = new Pose(97, 73, Math.toRadians(225));
     private final Pose LEAVE_MARK_BLUE = new Pose(48.569, 71.869, Math.toRadians(318));
@@ -365,6 +365,14 @@ public class AutonomousModeClose extends LinearOpMode {
                 }
                 break;
             case 3:
+                // Wait for delay, then Third ball spin
+                if (intakeSeqTimer.seconds() >= INTAKE_SPIN_DELAY) {
+                    moveChamberStep();
+                    intakeSeqTimer.reset();
+                    intakeSeqStage = 4;
+                }
+                break;
+            case 4:
                 // Done
                 break;
         }

@@ -60,9 +60,11 @@ public class GPPAutonomous extends LinearOpMode {
     private static final double NAV_TIMEOUT_SEC = 5.0;
     private static final double PICKUP_TIMEOUT_SEC = 2.0;
 
-    private static final double SHOOT_VELOCITY = 1298;
+    private static final double SHOOT_VELOCITY = 1280;
     private static final double CHAMBER_WAIT = 1.2; //change if needed
-    private static final double ATM_PUSH_TIME_FIRST = 2.0;
+
+    private static final double FIRST_WAIT = 2.3;
+    private static final double ATM_PUSH_TIME_FIRST = 1.8;
     private static final double ATM_PUSH_TIME_NORMAL = 0.9;
 
     // Chamber Stepper Variables
@@ -73,23 +75,23 @@ public class GPPAutonomous extends LinearOpMode {
 
     // Intake Sequencing Variables
     private int intakeSeqStage = 0;
-    private static final double INTAKE_SPIN_DELAY = 0.200;
+    private static final double INTAKE_SPIN_DELAY = 0.400;
 
     // ===================== FIELD COORDINATES (GPP ONLY) =====================
 
     // --- BLUE COORDINATES ---
     private final Pose BLUE_START = new Pose(57, 8.5, Math.toRadians(270));
-    private final Pose BLUE_SHOOT = new Pose(56, 15, Math.toRadians(299));
+    private final Pose BLUE_SHOOT = new Pose(56, 15, Math.toRadians(293));
     private final Pose BLUE_INTAKE_GPP = new Pose(56, 34, Math.toRadians(-180));
-    private final Pose BLUE_INTAKE_GPP_END = new Pose(29, 34, Math.toRadians(-180));
+    private final Pose BLUE_INTAKE_GPP_END = new Pose(25, 34, Math.toRadians(-180));
 
     // --- RED COORDINATES ---
     private final Pose RED_START = new Pose(87, 8.5, Math.toRadians(270));
-    private final Pose RED_SHOOT = new Pose(88, 19, Math.toRadians(250));
-    private final Pose RED_INTAKE_GPP = new Pose(88, 36, Math.toRadians(0));
-    private final Pose RED_INTAKE_GPP_END = new Pose(109, 36, Math.toRadians(0));
+    private final Pose RED_SHOOT = new Pose(88, 19, Math.toRadians(245)); //250
+    private final Pose RED_INTAKE_GPP = new Pose(90, 19.5, Math.toRadians(0));
+    private final Pose RED_INTAKE_GPP_END = new Pose(132, 19.5, Math.toRadians(0));
 
-    private final Pose LEAVE_MARK_RED = new Pose(88, 40, Math.toRadians(270));
+    private final Pose LEAVE_MARK_RED = new Pose(107.977, 13.269, Math.toRadians(270));
     private final Pose LEAVE_MARK_BLUE = new Pose(56, 40, Math.toRadians(270));
 
     // Active Points
@@ -186,7 +188,7 @@ public class GPPAutonomous extends LinearOpMode {
         flywheelMotor.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
         flywheelMotor.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
 
-        PIDFCoefficients pidfNew = new PIDFCoefficients(10, 0, 0, 10);
+        PIDFCoefficients pidfNew = new PIDFCoefficients(10.5, 0, 0, 9.1);
         flywheelMotor.setPIDFCoefficients(DcMotor.RunMode.RUN_USING_ENCODER, pidfNew);
 
         intakeMotor.setDirection(DcMotorSimple.Direction.REVERSE);
@@ -197,14 +199,14 @@ public class GPPAutonomous extends LinearOpMode {
         chamberSpinner.setMode(DcMotor.RunMode.RUN_TO_POSITION);
         chamberSpinner.setPower(0.63);
 
-        // GoalTargeter is kept but not actively used without Limelight
-        // It can be initialized later if vision is needed
+
         goalTargeter = null;
     }
 
     // ===================== LOGIC =====================
 
     private void runShootPreloads() {
+
         if (follower.isBusy()) return;
         runShootingLogic(false);
     }
@@ -278,6 +280,7 @@ public class GPPAutonomous extends LinearOpMode {
                     intakeSeqStage = 3;
                 }
                 break;
+
             case 3:
                 // Done
                 break;

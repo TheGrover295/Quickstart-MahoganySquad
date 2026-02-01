@@ -28,8 +28,8 @@ public class drive extends LinearOpMode {
 
     // --- Flywheel Velocities ---
     // Update these values to your preference!
-    private double HIGH_VELOCITY = 1285; // 1298
-    private double LOW_VELOCITY = 1000;   // Placeholder for lower speed
+    private double HIGH_VELOCITY = 1280; // 1298
+    private double LOW_VELOCITY = 1085;   // Placeholder for lower speed
 
     // --- Slow Mode Variables ---
     private boolean slowMode = false;
@@ -85,7 +85,7 @@ public class drive extends LinearOpMode {
         flywheelMotor.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
 
         // Apply PIDF Coefficients from Test Code (P=300, I=0, D=0, F=10)
-        PIDFCoefficients pidfNew = new PIDFCoefficients(11, 0, 0, 9.6); //10p
+        PIDFCoefficients pidfNew = new PIDFCoefficients(10.3, 0, 0, 9); //10p
         flywheelMotor.setPIDFCoefficients(DcMotor.RunMode.RUN_USING_ENCODER, pidfNew);
 
         // Chamber Setup
