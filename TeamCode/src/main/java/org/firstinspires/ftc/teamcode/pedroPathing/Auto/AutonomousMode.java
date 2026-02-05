@@ -1,5 +1,6 @@
 package org.firstinspires.ftc.teamcode.pedroPathing.Auto;
 
+import com.bylazar.graph.PanelsGraph;
 import com.pedropathing.follower.Follower;
 import com.pedropathing.geometry.BezierLine;
 import com.pedropathing.geometry.Pose;
@@ -19,7 +20,7 @@ import org.firstinspires.ftc.teamcode.pedroPathing.vision.GoalTargeter;
 import org.firstinspires.ftc.teamcode.pedroPathing.vision.MotifDetector;
 
 
-@Autonomous(name = "Limelight Far (Motif v5.5.4)", group = "Auto")
+@Autonomous(name = "Limelight Far (Motif v5.5.5)", group = "Auto")
 public class AutonomousMode extends LinearOpMode {
 
     // ===================== ALLIANCE SELECTION =====================
@@ -40,6 +41,8 @@ public class AutonomousMode extends LinearOpMode {
     private DcMotor chamberSpinner;
     private DcMotor intakeMotor;
     private CRServo artifactTransfer;
+
+    private PanelsGraph velocityGraph;
 
     // ===================== TIMING =====================
     private ElapsedTime runtime = new ElapsedTime();
@@ -186,6 +189,9 @@ public class AutonomousMode extends LinearOpMode {
             goalTargeter.update();
             motifDetector.update(goalTargeter.getVisionData());
 
+            // Update Graph
+
+
             switch (currentState) {
                 case SCAN_MOTIF:
                     runScanMotif();
@@ -251,6 +257,8 @@ public class AutonomousMode extends LinearOpMode {
         limelight.switchPipeline(0);
         goalTargeter = new GoalTargeter(limelight);
         motifDetector = new MotifDetector();
+
+
     }
 
     // ===================== LOGIC =====================

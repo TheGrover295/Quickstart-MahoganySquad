@@ -5,11 +5,16 @@ import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
 import com.qualcomm.robotcore.hardware.CRServo;
 import com.qualcomm.robotcore.hardware.DcMotor;
 import com.qualcomm.robotcore.hardware.DcMotorSimple;
+import com.qualcomm.robotcore.hardware.DigitalChannel;
 import com.qualcomm.robotcore.hardware.Gamepad;
 import com.qualcomm.robotcore.hardware.DcMotorEx;
 import com.qualcomm.robotcore.hardware.PIDFCoefficients;
 import com.arcrobotics.ftclib.gamepad.GamepadEx;
 import com.arcrobotics.ftclib.gamepad.GamepadKeys;
+import com.bylazar.panels.Panels;
+
+
+
 
 @TeleOp(name = "drive")
 public class drive extends LinearOpMode {
@@ -20,6 +25,7 @@ public class drive extends LinearOpMode {
     private DcMotorEx flywheelMotor;
     private DcMotor chamberSpinner;
     public CRServo artifactTransfer;
+    private DigitalChannel flywheelReadyLed;
 
     // --- Logic Variables ---
     private boolean intaking = false;
@@ -65,8 +71,11 @@ public class drive extends LinearOpMode {
         intakeMotor = hardwareMap.get(DcMotor.class, "intakeMotor");
         chamberSpinner = hardwareMap.get(DcMotor.class, "chamberSpinner");
         artifactTransfer = hardwareMap.get(CRServo.class, "ATM");
+        flywheelReadyLed = hardwareMap.get(DigitalChannel.class, "flywheelLed");
 
         // --- Motor Configuration ---
+        flywheelReadyLed.setMode(DigitalChannel.Mode.OUTPUT);
+
         // Drive Motors
         leftBack.setDirection(DcMotor.Direction.REVERSE);
         leftFront.setDirection(DcMotor.Direction.REVERSE);
@@ -94,8 +103,12 @@ public class drive extends LinearOpMode {
         chamberSpinner.setMode(DcMotor.RunMode.RUN_TO_POSITION);
         chamberSpinner.setPower(0.5);
 
-        telemetry.addLine("Ready. Left Trigger=High, Right Trigger=Low.");
+        telemetry.addLine("Ready.");
         telemetry.update();
+
+
+
+
 
         waitForStart();
 
@@ -133,6 +146,8 @@ public class drive extends LinearOpMode {
             //                  FLYWHEEL LOGIC (Split Triggers)
             // =========================================================
 
+
+
             if (shootState == 0) {
                 // Left Trigger = High Velocity
                 if (gamepad2.left_trigger > 0.1) {
@@ -153,6 +168,18 @@ public class drive extends LinearOpMode {
                     flywheelMotor.setVelocity(0);
                     flywheeling = false;
                 }
+            }
+
+            // Flywheel Ready LED Logic
+            if (flywheeling) {
+                double target = (gamepad2.left_trigger > 0.1) ? HIGH_VELOCITY : LOW_VELOCITY;
+                if (Math.abs(flywheelMotor.getVelocity() - target) < 30) {
+                    flywheelReadyLed.setState(true); // ON
+                } else {
+                    flywheelReadyLed.setState(false); // OFF
+                }
+            } else {
+                flywheelReadyLed.setState(false);
             }
 
             // =========================================================
@@ -197,6 +224,7 @@ public class drive extends LinearOpMode {
             }
             telemetry.addData("Chamber Pos", chamberSpinner.getCurrentPosition());
             telemetry.addData("Intaking", intaking);
+
             telemetry.update();
         }
     }
