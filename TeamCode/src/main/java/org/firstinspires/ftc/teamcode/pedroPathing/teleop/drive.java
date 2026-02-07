@@ -5,7 +5,7 @@ import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
 import com.qualcomm.robotcore.hardware.CRServo;
 import com.qualcomm.robotcore.hardware.DcMotor;
 import com.qualcomm.robotcore.hardware.DcMotorSimple;
-import com.qualcomm.robotcore.hardware.DigitalChannel;
+import com.qualcomm.robotcore.hardware.Servo;
 import com.qualcomm.robotcore.hardware.Gamepad;
 import com.qualcomm.robotcore.hardware.DcMotorEx;
 import com.qualcomm.robotcore.hardware.PIDFCoefficients;
@@ -13,8 +13,8 @@ import com.arcrobotics.ftclib.gamepad.GamepadEx;
 import com.arcrobotics.ftclib.gamepad.GamepadKeys;
 import com.bylazar.panels.Panels;
 
-
-
+import org.firstinspires.ftc.teamcode.pedroPathing.mechanisms.Limelight;
+import org.firstinspires.ftc.teamcode.pedroPathing.vision.GoalTargeter;
 
 @TeleOp(name = "drive")
 public class drive extends LinearOpMode {
@@ -25,7 +25,13 @@ public class drive extends LinearOpMode {
     private DcMotorEx flywheelMotor;
     private DcMotor chamberSpinner;
     public CRServo artifactTransfer;
-    private DigitalChannel flywheelReadyLed;
+    
+    // Classified as Servo because it is plugged into the Servo section of the Hub
+    private Servo flywheelReadyLed;
+
+    // --- Subsystems ---
+    private Limelight limelight;
+    private GoalTargeter goalTargeter;
 
     // --- Logic Variables ---
     private boolean intaking = false;
@@ -71,12 +77,17 @@ public class drive extends LinearOpMode {
         intakeMotor = hardwareMap.get(DcMotor.class, "intakeMotor");
         chamberSpinner = hardwareMap.get(DcMotor.class, "chamberSpinner");
         artifactTransfer = hardwareMap.get(CRServo.class, "ATM");
-        flywheelReadyLed = hardwareMap.get(DigitalChannel.class, "flywheelLed");
+        
+        // Mapped as a Servo in the configuration
+        flywheelReadyLed = hardwareMap.get(Servo.class, "flywheelLed");
+
+        // --- Vision Initialization ---
+        limelight = new Limelight();
+        limelight.init(hardwareMap);
+        limelight.switchPipeline(0); // AprilTag pipeline
+        goalTargeter = new GoalTargeter(limelight);
 
         // --- Motor Configuration ---
-        flywheelReadyLed.setMode(DigitalChannel.Mode.OUTPUT);
-
-        // Drive Motors
         leftBack.setDirection(DcMotor.Direction.REVERSE);
         leftFront.setDirection(DcMotor.Direction.REVERSE);
         leftBack.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
@@ -94,7 +105,7 @@ public class drive extends LinearOpMode {
         flywheelMotor.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
 
         // Apply PIDF Coefficients from Test Code (P=300, I=0, D=0, F=10)
-        PIDFCoefficients pidfNew = new PIDFCoefficients(10.3, 0, 0, 9); //10p
+        PIDFCoefficients pidfNew = new PIDFCoefficients(10.3000, 0, 0, 8.8000); //f=9
         flywheelMotor.setPIDFCoefficients(DcMotor.RunMode.RUN_USING_ENCODER, pidfNew);
 
         // Chamber Setup
@@ -106,15 +117,12 @@ public class drive extends LinearOpMode {
         telemetry.addLine("Ready.");
         telemetry.update();
 
-
-
-
-
         waitForStart();
 
         while (opModeIsActive()) {
             driverOp.readButtons();
             operatorOp.readButtons();
+            goalTargeter.update();
 
             // =========================================================
             //                     DRIVE LOGIC
@@ -137,6 +145,24 @@ public class drive extends LinearOpMode {
             double y = -Math.pow(gamepad1.left_stick_y, 3);
             double rz = Math.pow(gamepad1.right_stick_x, 3);
 
+            // Goal Lock-On Logic (Driver Left Bumper)
+            if (gamepad1.left_bumper) {
+                // Ground the robot (No translation)
+                x = 0;
+                y = 0;
+                // Lock rotation to AprilTag 20 (Blue) or 24 (Red) if visible
+                if (goalTargeter.hasTarget()) {
+                    int tagID = goalTargeter.getVisionData().getTagID();
+                    if (tagID == 20 || tagID == 24) {
+                        rz = -goalTargeter.getSteeringCorrection();
+                    } else {
+                        rz = 0;
+                    }
+                } else {
+                    rz = 0; // Don't move if tag isn't seen
+                }
+            }
+
             leftBack.setPower(((y - x) + rz) * speedMultiplier);
             leftFront.setPower((y + x + rz) * speedMultiplier);
             rightBack.setPower(((y + x) - rz) * speedMultiplier);
@@ -145,8 +171,6 @@ public class drive extends LinearOpMode {
             // =========================================================
             //                  FLYWHEEL LOGIC (Split Triggers)
             // =========================================================
-
-
 
             if (shootState == 0) {
                 // Left Trigger = High Velocity
@@ -170,16 +194,17 @@ public class drive extends LinearOpMode {
                 }
             }
 
-            // Flywheel Ready LED Logic
+            // Flywheel Ready LED Logic (Servo Port Implementation)
             if (flywheeling) {
                 double target = (gamepad2.left_trigger > 0.1) ? HIGH_VELOCITY : LOW_VELOCITY;
+                // If velocity is within range, output maximum PWM to "turn on" the LED
                 if (Math.abs(flywheelMotor.getVelocity() - target) < 30) {
-                    flywheelReadyLed.setState(true); // ON
+                    flywheelReadyLed.setPosition(1.0); // LED ON
                 } else {
-                    flywheelReadyLed.setState(false); // OFF
+                    flywheelReadyLed.setPosition(0.0); // LED OFF
                 }
             } else {
-                flywheelReadyLed.setState(false);
+                flywheelReadyLed.setPosition(0.0);
             }
 
             // =========================================================
@@ -224,6 +249,11 @@ public class drive extends LinearOpMode {
             }
             telemetry.addData("Chamber Pos", chamberSpinner.getCurrentPosition());
             telemetry.addData("Intaking", intaking);
+            
+            if (gamepad1.left_bumper) {
+                telemetry.addData("Vision Lock", goalTargeter.hasTarget() ? "LOCKED" : "SEARCHING");
+                telemetry.addData("Tag ID", goalTargeter.hasTarget() ? goalTargeter.getVisionData().getTagID() : "None");
+            }
 
             telemetry.update();
         }

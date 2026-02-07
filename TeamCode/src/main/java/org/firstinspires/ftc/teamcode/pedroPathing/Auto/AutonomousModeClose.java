@@ -95,9 +95,9 @@ public class AutonomousModeClose extends LinearOpMode {
     private final Pose BLUE_SHOOT = new Pose(59.686, 84.116, Math.toRadians(318)); //x=56 y=17, HEADING = 297
 
     // Blue Pre-Intake (Start driving from here)
-    private final Pose BLUE_INTAKE_GPP = new Pose(56, 34, Math.toRadians(-180)); //x=56 y=34
-    private final Pose BLUE_INTAKE_PGP = new Pose(60, 67, Math.toRadians(-180)); //y=58
-    private final Pose BLUE_INTAKE_PPG = new Pose(56, 82, Math.toRadians(-180)); //y=67
+    private final Pose BLUE_INTAKE_GPP = new Pose(54, 34, Math.toRadians(-180)); //x=56 y=34
+    private final Pose BLUE_INTAKE_PGP = new Pose(58, 67, Math.toRadians(-180)); //y=58 x 60
+    private final Pose BLUE_INTAKE_PPG = new Pose(54, 82, Math.toRadians(-180)); //y=67 x 56
 
     // Blue Intake End (Stop driving here)
     private final Pose BLUE_INTAKE_GPP_END = new Pose(25, 34, Math.toRadians(-180)); //x35
@@ -109,9 +109,9 @@ public class AutonomousModeClose extends LinearOpMode {
     private final Pose RED_SHOOT = new Pose(85, 85, Math.toRadians(225));
 
     // Red Pre-Intake (Mirrored X=48 -> X=88, Mirrored Y)
-    private final Pose RED_INTAKE_GPP = new Pose(82, 36, Math.toRadians(0));
-    private final Pose RED_INTAKE_PGP = new Pose(80, 42, Math.toRadians(0)); //x=82
-    private final Pose RED_INTAKE_PPG = new Pose(82, 64, Math.toRadians(0));
+    private final Pose RED_INTAKE_GPP = new Pose(80, 36, Math.toRadians(0)); //x 82
+    private final Pose RED_INTAKE_PGP = new Pose(78, 42, Math.toRadians(0)); //x=80
+    private final Pose RED_INTAKE_PPG = new Pose(80, 64, Math.toRadians(0)); //x 82
 
     // Red Intake End (Mirrored X=16 -> X=128, X=9 -> X=135)
     private final Pose RED_INTAKE_GPP_END = new Pose(112, 32, Math.toRadians(0));
