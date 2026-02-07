@@ -70,7 +70,7 @@ public class AutonomousModeClose extends LinearOpMode {
     private static final double PICKUP_TIMEOUT_SEC = 2.0;
 
     // UPDATED: Changed from Power to Velocity based on Drive file
-    private static final double SHOOT_VELOCITY = 1000; //CHANGE
+    private static final double SHOOT_VELOCITY = 1025; //CHANGE
 
     private static final double CHAMBER_WAIT = 1.8; //1.9, 1.0, 1.4, 2.4
     private static final double ATM_PUSH_TIME_FIRST = 2.0; //2.3
@@ -230,7 +230,7 @@ public class AutonomousModeClose extends LinearOpMode {
         flywheelMotor.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
         flywheelMotor.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
 
-        PIDFCoefficients pidfNew = new PIDFCoefficients(11, 0, 0, 9.6); //f=11 p =10
+        PIDFCoefficients pidfNew = new PIDFCoefficients(20.3025, 0, 0, 20.7020); //f=11 p =10
         flywheelMotor.setPIDFCoefficients(
             DcMotor.RunMode.RUN_USING_ENCODER,
             pidfNew

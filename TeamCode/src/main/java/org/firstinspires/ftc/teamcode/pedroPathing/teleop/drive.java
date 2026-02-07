@@ -23,6 +23,7 @@ public class drive extends LinearOpMode {
     private DcMotor rightFront, rightBack, leftBack, leftFront;
     private DcMotor intakeMotor;
     private DcMotorEx flywheelMotor;
+
     private DcMotor chamberSpinner;
     public CRServo artifactTransfer;
     
@@ -37,11 +38,12 @@ public class drive extends LinearOpMode {
     private boolean intaking = false;
     private double intakeSpeed = 1;
     private boolean flywheeling = false;
+    private boolean goalLockEnabled = false;
 
     // --- Flywheel Velocities ---
     // Update these values to your preference!
-    private double HIGH_VELOCITY = 1280; // 1298
-    private double LOW_VELOCITY = 1085;   // Placeholder for lower speed
+    private double HIGH_VELOCITY = 1300; // 1298
+    private double LOW_VELOCITY = 1025;   // Placeholder for lower speed
 
     // --- Slow Mode Variables ---
     private boolean slowMode = false;
@@ -58,6 +60,9 @@ public class drive extends LinearOpMode {
     private boolean lastB = false;
     private boolean lastY = false;
     private boolean lastX = false;
+    private boolean lastLT = false;
+    private boolean lastRT = false;
+    private int flywheelMode = 0; // 0: off, 1: high, 2: low
     private int shootState = 0;
 
     private GamepadEx operatorOp;
@@ -105,7 +110,7 @@ public class drive extends LinearOpMode {
         flywheelMotor.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
 
         // Apply PIDF Coefficients from Test Code (P=300, I=0, D=0, F=10)
-        PIDFCoefficients pidfNew = new PIDFCoefficients(10.3000, 0, 0, 8.8000); //f=9
+        PIDFCoefficients pidfNew = new PIDFCoefficients(20.3025, 0, 0, 20.7020); //f=9
         flywheelMotor.setPIDFCoefficients(DcMotor.RunMode.RUN_USING_ENCODER, pidfNew);
 
         // Chamber Setup
@@ -145,8 +150,15 @@ public class drive extends LinearOpMode {
             double y = -Math.pow(gamepad1.left_stick_y, 3);
             double rz = Math.pow(gamepad1.right_stick_x, 3);
 
-            // Goal Lock-On Logic (Driver Left Bumper)
-            if (gamepad1.left_bumper) {
+            // Goal Lock-On Toggle (Driver Left Bumper)
+            if (driverOp.wasJustPressed(GamepadKeys.Button.DPAD_DOWN)) {
+                goalLockEnabled = !goalLockEnabled;
+                if (goalLockEnabled) {
+                    gamepad1.rumble(300);
+                }
+            }
+
+            if (goalLockEnabled) {
                 // Ground the robot (No translation)
                 x = 0;
                 y = 0;
@@ -169,26 +181,36 @@ public class drive extends LinearOpMode {
             rightFront.setPower(((y - x) - rz) * speedMultiplier);
 
             // =========================================================
-            //                  FLYWHEEL LOGIC (Split Triggers)
+            //                  FLYWHEEL LOGIC (Toggle Triggers)
             // =========================================================
 
+            boolean ltPressed = gamepad2.left_trigger > 0.3;
+            boolean rtPressed = gamepad2.right_trigger > 0.3;
+
+            // Toggle High Velocity
+            if (ltPressed && !lastLT) {
+                if (flywheelMode == 1) flywheelMode = 0;
+                else flywheelMode = 1;
+            }
+            // Toggle Low Velocity
+            if (rtPressed && !lastRT) {
+                if (flywheelMode == 2) flywheelMode = 0;
+                else flywheelMode = 2;
+            }
+            
+            lastLT = ltPressed;
+            lastRT = rtPressed;
+
             if (shootState == 0) {
-                // Left Trigger = High Velocity
-                if (gamepad2.left_trigger > 0.1) {
+                if (flywheelMode == 1) {
                     flywheelMotor.setVelocity(HIGH_VELOCITY);
-                    gamepad2.rumble(100);
-                    gamepad1.setLedColor(255, 0, 255, Gamepad.LED_DURATION_CONTINUOUS);
                     flywheeling = true;
-                }
-                // Right Trigger = Low Velocity
-                else if (gamepad2.right_trigger > 0.1) {
+                    gamepad2.setLedColor(255, 0, 255, Gamepad.LED_DURATION_CONTINUOUS);
+                } else if (flywheelMode == 2) {
                     flywheelMotor.setVelocity(LOW_VELOCITY);
-                    gamepad2.rumble(220);
-                    gamepad1.setLedColor(0, 255, 255, Gamepad.LED_DURATION_CONTINUOUS); // Cyan for Low
                     flywheeling = true;
-                }
-                // No Trigger = Stop
-                else {
+                    gamepad2.setLedColor(0, 255, 255, Gamepad.LED_DURATION_CONTINUOUS);
+                } else {
                     flywheelMotor.setVelocity(0);
                     flywheeling = false;
                 }
@@ -196,7 +218,7 @@ public class drive extends LinearOpMode {
 
             // Flywheel Ready LED Logic (Servo Port Implementation)
             if (flywheeling) {
-                double target = (gamepad2.left_trigger > 0.1) ? HIGH_VELOCITY : LOW_VELOCITY;
+                double target = (flywheelMode == 1) ? HIGH_VELOCITY : LOW_VELOCITY;
                 // If velocity is within range, output maximum PWM to "turn on" the LED
                 if (Math.abs(flywheelMotor.getVelocity() - target) < 30) {
                     flywheelReadyLed.setPosition(1.0); // LED ON
@@ -212,10 +234,10 @@ public class drive extends LinearOpMode {
             // =========================================================
 
             // Intake Logic
-            if (operatorOp.wasJustPressed(GamepadKeys.Button.LEFT_BUMPER)) {
+            if (driverOp.wasJustPressed(GamepadKeys.Button.LEFT_BUMPER)) {
                 intaking = !intaking;
                 intakeMotor.setPower(intaking ? intakeSpeed : 0);
-                gamepad2.rumble(200);
+                gamepad1.rumble(200);
                 gamepad1.setLedColor(255, 0, 0, Gamepad.LED_DURATION_CONTINUOUS);
             }
 
@@ -243,15 +265,16 @@ public class drive extends LinearOpMode {
             //                       TELEMETRY
             // =========================================================
             telemetry.addData("DRIVE MODE", slowMode ? "SLOW (25%)" : "FULL POWER");
+            telemetry.addData("Goal Lock (LB)", goalLockEnabled ? "ENABLED" : "DISABLED");
             telemetry.addData("Flywheel Velocity", flywheelMotor.getVelocity());
             if(flywheeling) {
-                telemetry.addData("Target", gamepad2.left_trigger > 0.1 ? "HIGH ("+HIGH_VELOCITY+")" : "LOW ("+LOW_VELOCITY+")");
+                telemetry.addData("Target", flywheelMode == 1 ? "HIGH ("+HIGH_VELOCITY+")" : "LOW ("+LOW_VELOCITY+")");
             }
             telemetry.addData("Chamber Pos", chamberSpinner.getCurrentPosition());
             telemetry.addData("Intaking", intaking);
             
-            if (gamepad1.left_bumper) {
-                telemetry.addData("Vision Lock", goalTargeter.hasTarget() ? "LOCKED" : "SEARCHING");
+            if (goalLockEnabled) {
+                telemetry.addData("Vision Status", goalTargeter.hasTarget() ? "LOCKED" : "SEARCHING");
                 telemetry.addData("Tag ID", goalTargeter.hasTarget() ? goalTargeter.getVisionData().getTagID() : "None");
             }
 

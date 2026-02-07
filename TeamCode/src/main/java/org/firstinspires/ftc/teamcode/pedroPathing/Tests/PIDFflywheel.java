@@ -12,7 +12,7 @@ public class PIDFflywheel extends OpMode {
     public DcMotorEx flywheelmotor;
 
     public double highVelocity = 1280;
-    public double lowVelocity = 1085;
+    public double lowVelocity = 1025;
 
     double curTargetVelocity = highVelocity;
 
@@ -62,9 +62,9 @@ public class PIDFflywheel extends OpMode {
             P -= stepSizes[stepIndex];
         }
 
-       //PIDFCoefficients pidfCoefficients = new PIDFCoefficients(P, 0, 0, F);
-       // flywheelmotor.setPIDFCoefficients(DcMotorEx.RunMode.RUN_USING_ENCODER, pidfCoefficients);
-        flywheelmotor.setVelocityPIDFCoefficients(P, 0, 0, F);
+       PIDFCoefficients pidfCoefficients = new PIDFCoefficients(P, 0, 0, F);
+        flywheelmotor.setPIDFCoefficients(DcMotorEx.RunMode.RUN_USING_ENCODER, pidfCoefficients);
+        //flywheelmotor.setVelocityPIDFCoefficients(P, 0, 0, F);
 
         flywheelmotor.setVelocity(curTargetVelocity);
 
