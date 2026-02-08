@@ -113,7 +113,7 @@ public class AutonomousModeClose extends LinearOpMode {
 
     // Red Pre-Intake (Mirrored X=48 -> X=88, Mirrored Y)
     private final Pose RED_INTAKE_GPP = new Pose(80, 20, Math.toRadians(0)); //x 82
-    private final Pose RED_INTAKE_PGP = new Pose(86, 42, Math.toRadians(0)); //x=80
+    private final Pose RED_INTAKE_PGP = new Pose(86, 42, Math.toRadians(0)); //x=80e
     private final Pose RED_INTAKE_PPG = new Pose(80, 64, Math.toRadians(0)); //x 82
 
     // Red Intake End (Mirrored X=16 -> X=128, X=9 -> X=135)
