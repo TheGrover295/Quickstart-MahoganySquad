@@ -15,6 +15,7 @@ import com.bylazar.panels.Panels;
 
 import org.firstinspires.ftc.teamcode.pedroPathing.mechanisms.Limelight;
 import org.firstinspires.ftc.teamcode.pedroPathing.vision.GoalTargeter;
+import org.firstinspires.ftc.teamcode.pedroPathing.vision.VisionData;
 
 @TeleOp(name = "drive")
 public class drive extends LinearOpMode {
