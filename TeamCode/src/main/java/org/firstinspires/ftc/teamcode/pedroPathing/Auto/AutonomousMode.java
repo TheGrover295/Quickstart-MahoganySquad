@@ -74,11 +74,11 @@ public class AutonomousMode extends LinearOpMode {
     private static final double PICKUP_TIMEOUT_SEC = 2.0;
 
     // UPDATED: Changed from Power to Velocity based on Drive file
-    private static final double SHOOT_VELOCITY = 1280; //1298
+    private static final double SHOOT_VELOCITY = 1350; //1350
 
     private static final double CHAMBER_WAIT = 1.9; //1.9, 1.0, 1.4, 2.4
     private static final double START_WAIT = 2.5;
-    private static final double ATM_PUSH_TIME_FIRST = 1.8; //2.0
+    private static final double ATM_PUSH_TIME_FIRST = 1.2; //2.0
     private static final double ATM_PUSH_TIME_NORMAL = 0.9;
 
     // --- Chamber Stepper Variables ---
@@ -110,7 +110,7 @@ public class AutonomousMode extends LinearOpMode {
 
     // --- RED COORDINATES ---
     private final Pose RED_START = new Pose(87, 8.5, Math.toRadians(270));
-    private final Pose RED_SHOOT = new Pose(88, 19, Math.toRadians(245)); //250
+    private final Pose RED_SHOOT = new Pose(88, 19, Math.toRadians(247)); //250
 
     // Red Pre-Intake (Mirrored X=48 -> X=88, Mirrored Y)
     private final Pose RED_INTAKE_GPP = new Pose(90, 19.5, Math.toRadians(0));
@@ -384,6 +384,14 @@ public class AutonomousMode extends LinearOpMode {
                 }
                 break;
             case 4:
+                // Wait for delay, then Third ball spin
+                if (intakeSeqTimer.seconds() >= INTAKE_SPIN_DELAY) {
+                    moveChamberStep();
+                    intakeSeqTimer.reset();
+                    intakeSeqStage = 5;
+                }
+                break;
+            case 5:
                 // Done
                 break;
         }
@@ -391,7 +399,7 @@ public class AutonomousMode extends LinearOpMode {
 
     private void runNavToShoot() {
         if (!follower.isBusy() && stateTimer.seconds() > 0.5) {
-            intakeMotor.setPower(0);
+            //intakeMotor.setPower(0);
             startSecondShootingPhase();
         } else if (stateTimer.seconds() > NAV_TIMEOUT_SEC) {
             startSecondShootingPhase();

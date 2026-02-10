@@ -46,7 +46,7 @@ public class drive extends LinearOpMode {
     // --- Flywheel Velocities ---
     // Update these values to your preference!
     private double HIGH_VELOCITY = 1350; // 1298
-    private double LOW_VELOCITY = 1025;   // Placeholder for lower speed
+    private double LOW_VELOCITY = 1035;   // Placeholder for lower speed
 
     // --- Slow Mode Variables ---
     private boolean slowMode = false;
