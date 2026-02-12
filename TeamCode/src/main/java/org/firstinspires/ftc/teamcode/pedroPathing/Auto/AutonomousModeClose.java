@@ -105,7 +105,7 @@ public class AutonomousModeClose extends LinearOpMode {
     // Blue Intake End (Stop driving here)
     private final Pose BLUE_INTAKE_GPP_END = new Pose(37, 43, Math.toRadians(-180));
     private final Pose BLUE_INTAKE_PGP_END = new Pose(37, 67, Math.toRadians(-180)); //x25
-    private final Pose BLUE_INTAKE_PPG_END = new Pose(42, 90, Math.toRadians(-180));
+    private final Pose BLUE_INTAKE_PPG_END = new Pose(42, 90, Math.toRadians(-180));//cooo
 
     // --- RED COORDINATES ---
     private final Pose RED_START = new Pose(122.672, 122.457, Math.toRadians(215));
