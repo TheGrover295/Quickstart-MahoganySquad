@@ -12,6 +12,7 @@ import com.qualcomm.robotcore.hardware.DcMotor;
 import com.qualcomm.robotcore.hardware.DcMotorEx;
 import com.qualcomm.robotcore.hardware.DcMotorSimple;
 import com.qualcomm.robotcore.hardware.PIDFCoefficients;
+import com.qualcomm.robotcore.hardware.Servo;
 import com.qualcomm.robotcore.util.ElapsedTime;
 import com.qualcomm.robotcore.util.RobotLog;
 import org.firstinspires.ftc.teamcode.pedroPathing.Constants;
@@ -41,6 +42,8 @@ public class AutonomousMode extends LinearOpMode {
     private DcMotor chamberSpinner;
     private DcMotor intakeMotor;
     private CRServo artifactTransfer;
+
+    private Servo LimeServo;
 
     private PanelsGraph velocityGraph;
 
@@ -232,6 +235,7 @@ public class AutonomousMode extends LinearOpMode {
         chamberSpinner = hardwareMap.get(DcMotor.class, "chamberSpinner");
         intakeMotor = hardwareMap.get(DcMotor.class, "intakeMotor");
         artifactTransfer = hardwareMap.get(CRServo.class, "ATM");
+        LimeServo = hardwareMap.get(Servo.class, "axonLime");
 
         flywheelMotor.setDirection(DcMotorSimple.Direction.REVERSE);
         flywheelMotor.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
@@ -240,8 +244,8 @@ public class AutonomousMode extends LinearOpMode {
         PIDFCoefficients pidfNew = new PIDFCoefficients(20.3025, 0, 0, 20.7020); //f=10 p=11
 
         flywheelMotor.setPIDFCoefficients(
-            DcMotor.RunMode.RUN_USING_ENCODER,
-            pidfNew
+                DcMotor.RunMode.RUN_USING_ENCODER,
+                pidfNew
         );
 
         intakeMotor.setDirection(DcMotorSimple.Direction.REVERSE);
@@ -258,7 +262,7 @@ public class AutonomousMode extends LinearOpMode {
         goalTargeter = new GoalTargeter(limelight);
         motifDetector = new MotifDetector();
 
-
+        LimeServo.setPosition(0.5);
     }
 
     // ===================== LOGIC =====================
@@ -266,8 +270,8 @@ public class AutonomousMode extends LinearOpMode {
     private void runScanMotif() {
         // Continuously check for confident detection while driving
         if (
-            detectedMotif == MotifDetector.Motif.UNKNOWN &&
-            motifDetector.hasConfidentDetection()
+                detectedMotif == MotifDetector.Motif.UNKNOWN &&
+                        motifDetector.hasConfidentDetection()
         ) {
             detectedMotif = motifDetector.getDetectedMotif();
             decisionReason = "Confident (Drive)";
@@ -337,10 +341,17 @@ public class AutonomousMode extends LinearOpMode {
     }
 
     private void runPickupBalls() {
-        // CONTINUE SEQUENCING (In case drive finished before 3 spins)
+
         updateIntakeIndexing();
 
         if (stateTimer.seconds() > PICKUP_TIMEOUT_SEC) {
+
+            // move to b when at intake
+            chamberTargetPos += SHOOT_POS_TICKS;
+            chamberSpinner.setTargetPosition((int) chamberTargetPos);
+            chamberSpinner.setPower(1);
+
+
             //intakeMotor.setPower(0);
             buildAndFollowPath(finalIntakePose, shootPose);
             flywheelMotor.setVelocity(SHOOT_VELOCITY); // Start flywheel while moving back
@@ -407,11 +418,6 @@ public class AutonomousMode extends LinearOpMode {
     }
 
     private void startSecondShootingPhase() {
-        // Step 4: "then adjust to shoot pos (B)" -> Add 100
-        chamberTargetPos += SHOOT_POS_TICKS;
-        chamberSpinner.setTargetPosition((int) chamberTargetPos);
-        chamberSpinner.setPower(1);
-
         inSecondShootingPhase = true;
         ballsShot = 0;
         shootSubState = 0;
@@ -439,7 +445,7 @@ public class AutonomousMode extends LinearOpMode {
                 double currentWait = (ballsShot == 0) ? START_WAIT : CHAMBER_WAIT;
                 if (shootTimer.seconds() >= currentWait) {
                     artifactTransfer.setDirection(
-                        DcMotorSimple.Direction.FORWARD
+                            DcMotorSimple.Direction.FORWARD
                     );
                     artifactTransfer.setPower(1);
                     shootTimer.reset();
@@ -448,8 +454,8 @@ public class AutonomousMode extends LinearOpMode {
                 break;
             case 2:
                 double pushTime = (ballsShot == 0 && !isSecondPhase)
-                    ? ATM_PUSH_TIME_FIRST
-                    : ATM_PUSH_TIME_NORMAL;
+                        ? ATM_PUSH_TIME_FIRST
+                        : ATM_PUSH_TIME_NORMAL;
                 if (shootTimer.seconds() >= pushTime) {
                     artifactTransfer.setPower(0);
                     shootSubState = 3;
@@ -524,11 +530,11 @@ public class AutonomousMode extends LinearOpMode {
         }
 
         RobotLog.d(
-            "AUTO",
-            "Targets: Pre=" +
-                preIntakePose.toString() +
-                " | Final=" +
-                finalIntakePose.toString()
+                "AUTO",
+                "Targets: Pre=" +
+                        preIntakePose.toString() +
+                        " | Final=" +
+                        finalIntakePose.toString()
         );
 
         // Build first leg: Shoot -> Pre-Intake
@@ -537,10 +543,10 @@ public class AutonomousMode extends LinearOpMode {
 
     private void buildAndFollowPath(Pose start, Pose end) {
         currentPath = follower
-            .pathBuilder()
-            .addPath(new BezierLine(start, end))
-            .setLinearHeadingInterpolation(start.getHeading(), end.getHeading())
-            .build();
+                .pathBuilder()
+                .addPath(new BezierLine(start, end))
+                .setLinearHeadingInterpolation(start.getHeading(), end.getHeading())
+                .build();
         follower.followPath(currentPath);
     }
 

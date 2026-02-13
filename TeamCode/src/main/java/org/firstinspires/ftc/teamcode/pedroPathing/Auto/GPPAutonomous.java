@@ -1,5 +1,9 @@
 package org.firstinspires.ftc.teamcode.pedroPathing.Auto;
 
+import com.pedropathing.follower.Follower;
+import com.pedropathing.geometry.BezierLine;
+import com.pedropathing.geometry.Pose;
+import com.pedropathing.paths.PathChain;
 import com.qualcomm.robotcore.eventloop.opmode.Autonomous;
 import com.qualcomm.robotcore.eventloop.opmode.LinearOpMode;
 import com.qualcomm.robotcore.hardware.CRServo;
@@ -7,34 +11,28 @@ import com.qualcomm.robotcore.hardware.DcMotor;
 import com.qualcomm.robotcore.hardware.DcMotorEx;
 import com.qualcomm.robotcore.hardware.DcMotorSimple;
 import com.qualcomm.robotcore.hardware.PIDFCoefficients;
+import com.qualcomm.robotcore.hardware.Servo;
 import com.qualcomm.robotcore.util.ElapsedTime;
-import com.qualcomm.robotcore.util.RobotLog;
-
 import org.firstinspires.ftc.teamcode.pedroPathing.Constants;
-import org.firstinspires.ftc.teamcode.pedroPathing.vision.GoalTargeter;
 
-import com.pedropathing.follower.Follower;
-import com.pedropathing.geometry.BezierLine;
-import com.pedropathing.geometry.Pose;
-import com.pedropathing.paths.PathChain;
-
-@Autonomous(name = "GPP Autonomous Far", group = "Auto")
+@Autonomous(name = "GPP Auto Far", group = "Auto")
 public class GPPAutonomous extends LinearOpMode {
 
     // ===================== ALLIANCE SELECTION =====================
     private enum Alliance {
-        RED, BLUE
+        RED,
+        BLUE,
     }
+
     private Alliance selectedAlliance = Alliance.BLUE; // Default
 
     // ===================== SUBSYSTEMS =====================
     private Follower follower;
-    private GoalTargeter goalTargeter;
-
     private DcMotorEx flywheelMotor;
     private DcMotor chamberSpinner;
     private DcMotor intakeMotor;
     private CRServo artifactTransfer;
+    private Servo LimeServo; // Kept to ensure camera is tucked/positioned if needed
 
     // ===================== TIMING =====================
     private ElapsedTime runtime = new ElapsedTime();
@@ -52,47 +50,53 @@ public class GPPAutonomous extends LinearOpMode {
         NAV_TO_SHOOT,
         ALIGN_AND_SHOOT,
         LEAVE_MARK,
-        DONE
+        DONE,
     }
+
     private AutoState currentState = AutoState.INIT;
 
     // ===================== CONFIGURATION =====================
     private static final double NAV_TIMEOUT_SEC = 5.0;
     private static final double PICKUP_TIMEOUT_SEC = 2.0;
 
-    private static final double SHOOT_VELOCITY = 1280;
-    private static final double CHAMBER_WAIT = 1.2; //change if needed
+    private static final double SHOOT_VELOCITY = 1350;
 
-    private static final double FIRST_WAIT = 2.3;
-    private static final double ATM_PUSH_TIME_FIRST = 1.8;
+    private static final double CHAMBER_WAIT = 1.9;
+    private static final double START_WAIT = 2.5;
+    private static final double ATM_PUSH_TIME_FIRST = 1.2;
     private static final double ATM_PUSH_TIME_NORMAL = 0.9;
 
-    // Chamber Stepper Variables
+    // --- Chamber Stepper Variables ---
     private final double TICKS_PER_STEP = 475.06;
-    private final double SHOOT_POS_TICKS = 100;
-    private final double BACK_TO_INTAKE_TICKS = 100;
+    private final double SHOOT_POS_TICKS = 120; //100
+    private final double BACK_TO_INTAKE_TICKS = 120; //100
     private double chamberTargetPos = 0;
 
     // Intake Sequencing Variables
     private int intakeSeqStage = 0;
     private static final double INTAKE_SPIN_DELAY = 0.400;
 
-    // ===================== FIELD COORDINATES (GPP ONLY) =====================
+    // ===================== FIELD COORDINATES =====================
 
     // --- BLUE COORDINATES ---
     private final Pose BLUE_START = new Pose(57, 8.5, Math.toRadians(270));
     private final Pose BLUE_SHOOT = new Pose(56, 15, Math.toRadians(293));
+
+    // Blue GPP Specific
     private final Pose BLUE_INTAKE_GPP = new Pose(56, 34, Math.toRadians(-180));
     private final Pose BLUE_INTAKE_GPP_END = new Pose(25, 34, Math.toRadians(-180));
 
     // --- RED COORDINATES ---
     private final Pose RED_START = new Pose(87, 8.5, Math.toRadians(270));
-    private final Pose RED_SHOOT = new Pose(88, 19, Math.toRadians(245)); //250
+    private final Pose RED_SHOOT = new Pose(88, 19, Math.toRadians(247));
+
+    // Red GPP Specific
     private final Pose RED_INTAKE_GPP = new Pose(90, 19.5, Math.toRadians(0));
     private final Pose RED_INTAKE_GPP_END = new Pose(132, 19.5, Math.toRadians(0));
 
+    // Parking
     private final Pose LEAVE_MARK_RED = new Pose(107.977, 13.269, Math.toRadians(270));
-    private final Pose LEAVE_MARK_BLUE = new Pose(56, 40, Math.toRadians(270));
+    private final Pose LEAVE_MARK_BLUE = new Pose(37.269, 12.946, Math.toRadians(270));
 
     // Active Points
     private Pose startPose;
@@ -113,19 +117,15 @@ public class GPPAutonomous extends LinearOpMode {
 
         // ===================== SELECTION LOOP =====================
         while (!isStarted() && !isStopRequested()) {
-            // TOGGLE LOGIC
             if (gamepad1.left_bumper) {
                 selectedAlliance = Alliance.RED;
             } else if (gamepad1.right_bumper) {
                 selectedAlliance = Alliance.BLUE;
             }
 
-            // Telemetry
-            telemetry.addLine("=== GPP AUTONOMOUS (ALLIANCE SELECTION) ===");
+            telemetry.addLine("=== GPP ONLY AUTO ===");
             telemetry.addData("Selected Alliance", selectedAlliance);
             telemetry.addLine("LB = RED | RB = BLUE");
-            telemetry.addLine();
-            telemetry.addLine("This auto goes to GPP spike mark only.");
             telemetry.update();
         }
 
@@ -133,41 +133,55 @@ public class GPPAutonomous extends LinearOpMode {
         if (selectedAlliance == Alliance.BLUE) {
             startPose = BLUE_START;
             shootPose = BLUE_SHOOT;
+            // HARDCODED TO GPP
             preIntakePose = BLUE_INTAKE_GPP;
             finalIntakePose = BLUE_INTAKE_GPP_END;
         } else {
             startPose = RED_START;
             shootPose = RED_SHOOT;
+            // HARDCODED TO GPP
             preIntakePose = RED_INTAKE_GPP;
             finalIntakePose = RED_INTAKE_GPP_END;
         }
 
         follower.setStartingPose(startPose);
-        runtime.reset();
 
-        // Go directly to shooting preloads (no motif scanning)
+        // Initial Path: Start -> Shoot
         buildAndFollowPath(startPose, shootPose);
-        transitionTo(AutoState.SHOOT_PRELOADS);
         flywheelMotor.setVelocity(SHOOT_VELOCITY);
+
+        runtime.reset();
         stateTimer.reset();
+
+        // Skip scanning, go straight to shooting
+        currentState = AutoState.SHOOT_PRELOADS;
 
         // ===================== RUN LOOP =====================
         while (opModeIsActive()) {
             follower.update();
 
-            // Update GoalTargeter if available
-            if (goalTargeter != null) {
-                goalTargeter.update();
-            }
-
             switch (currentState) {
-                case SHOOT_PRELOADS:    runShootPreloads(); break;
-                case NAV_TO_PRE_INTAKE: runNavToPreIntake(); break;
-                case INTAKE_DRIVE:      runIntakeDrive(); break;
-                case PICKUP_BALLS:      runPickupBalls(); break;
-                case NAV_TO_SHOOT:      runNavToShoot(); break;
-                case ALIGN_AND_SHOOT:   runAlignAndShoot(); break;
-                case LEAVE_MARK:        runLeaveMark(); break;
+                case SHOOT_PRELOADS:
+                    runShootPreloads();
+                    break;
+                case NAV_TO_PRE_INTAKE:
+                    runNavToPreIntake();
+                    break;
+                case INTAKE_DRIVE:
+                    runIntakeDrive();
+                    break;
+                case PICKUP_BALLS:
+                    runPickupBalls();
+                    break;
+                case NAV_TO_SHOOT:
+                    runNavToShoot();
+                    break;
+                case ALIGN_AND_SHOOT:
+                    runAlignAndShoot();
+                    break;
+                case LEAVE_MARK:
+                    runLeaveMark();
+                    break;
                 case DONE:
                     stopAllMechanisms();
                     follower.breakFollowing();
@@ -183,13 +197,17 @@ public class GPPAutonomous extends LinearOpMode {
         chamberSpinner = hardwareMap.get(DcMotor.class, "chamberSpinner");
         intakeMotor = hardwareMap.get(DcMotor.class, "intakeMotor");
         artifactTransfer = hardwareMap.get(CRServo.class, "ATM");
+        LimeServo = hardwareMap.get(Servo.class, "axonLime");
 
         flywheelMotor.setDirection(DcMotorSimple.Direction.REVERSE);
         flywheelMotor.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
         flywheelMotor.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
 
         PIDFCoefficients pidfNew = new PIDFCoefficients(20.3025, 0, 0, 20.7020);
-        flywheelMotor.setPIDFCoefficients(DcMotor.RunMode.RUN_USING_ENCODER, pidfNew);
+        flywheelMotor.setPIDFCoefficients(
+                DcMotor.RunMode.RUN_USING_ENCODER,
+                pidfNew
+        );
 
         intakeMotor.setDirection(DcMotorSimple.Direction.REVERSE);
         chamberSpinner.setDirection(DcMotorSimple.Direction.REVERSE);
@@ -199,14 +217,12 @@ public class GPPAutonomous extends LinearOpMode {
         chamberSpinner.setMode(DcMotor.RunMode.RUN_TO_POSITION);
         chamberSpinner.setPower(0.63);
 
-
-        goalTargeter = null;
+        LimeServo.setPosition(0.5);
     }
 
     // ===================== LOGIC =====================
 
     private void runShootPreloads() {
-
         if (follower.isBusy()) return;
         runShootingLogic(false);
     }
@@ -224,14 +240,12 @@ public class GPPAutonomous extends LinearOpMode {
             buildAndFollowPath(preIntakePose, finalIntakePose);
             transitionTo(AutoState.INTAKE_DRIVE);
         } else if (stateTimer.seconds() > NAV_TIMEOUT_SEC) {
+            // Failsafe
             intakeMotor.setPower(1.0);
-
             chamberTargetPos -= BACK_TO_INTAKE_TICKS;
             chamberSpinner.setTargetPosition((int) chamberTargetPos);
             chamberSpinner.setPower(1);
-
             intakeSeqStage = 0;
-
             buildAndFollowPath(preIntakePose, finalIntakePose);
             transitionTo(AutoState.INTAKE_DRIVE);
         }
@@ -251,6 +265,12 @@ public class GPPAutonomous extends LinearOpMode {
         updateIntakeIndexing();
 
         if (stateTimer.seconds() > PICKUP_TIMEOUT_SEC) {
+            // Rotate Chamber immediately after pickup done
+            chamberTargetPos += SHOOT_POS_TICKS;
+            chamberSpinner.setTargetPosition((int) chamberTargetPos);
+            chamberSpinner.setPower(1);
+
+            // Build path and start moving
             buildAndFollowPath(finalIntakePose, shootPose);
             flywheelMotor.setVelocity(SHOOT_VELOCITY);
             transitionTo(AutoState.NAV_TO_SHOOT);
@@ -280,16 +300,28 @@ public class GPPAutonomous extends LinearOpMode {
                     intakeSeqStage = 3;
                 }
                 break;
-
             case 3:
-                // Done
+                if (intakeSeqTimer.seconds() >= INTAKE_SPIN_DELAY) {
+                    moveChamberStep();
+                    intakeSeqTimer.reset();
+                    intakeSeqStage = 4;
+                }
+                break;
+            case 4:
+                if (intakeSeqTimer.seconds() >= INTAKE_SPIN_DELAY) {
+                    moveChamberStep();
+                    intakeSeqTimer.reset();
+                    intakeSeqStage = 5;
+                }
+                break;
+            case 5:
                 break;
         }
     }
 
     private void runNavToShoot() {
         if (!follower.isBusy() && stateTimer.seconds() > 0.5) {
-            intakeMotor.setPower(0);
+            // intakeMotor.setPower(0);
             startSecondShootingPhase();
         } else if (stateTimer.seconds() > NAV_TIMEOUT_SEC) {
             startSecondShootingPhase();
@@ -297,9 +329,10 @@ public class GPPAutonomous extends LinearOpMode {
     }
 
     private void startSecondShootingPhase() {
-        chamberTargetPos += SHOOT_POS_TICKS;
-        chamberSpinner.setTargetPosition((int) chamberTargetPos);
-        chamberSpinner.setPower(1);
+
+        // chamberTargetPos += SHOOT_POS_TICKS;
+        // chamberSpinner.setTargetPosition((int) chamberTargetPos);
+        // chamberSpinner.setPower(1);
 
         inSecondShootingPhase = true;
         ballsShot = 0;
@@ -315,7 +348,8 @@ public class GPPAutonomous extends LinearOpMode {
     private void runShootingLogic(boolean isSecondPhase) {
         switch (shootSubState) {
             case 0:
-                // Only spin the chamber if it's NOT the first ball of the phase.
+                // Only spin the chamber if it's NOT the first ball of the phase
+                // NOTE: This relies on the chamber already being in position from runPickupBalls
                 if (ballsShot > 0) {
                     moveChamberStep();
                 }
@@ -323,15 +357,18 @@ public class GPPAutonomous extends LinearOpMode {
                 shootSubState = 1;
                 break;
             case 1:
-                if (shootTimer.seconds() >= CHAMBER_WAIT) {
+                double currentWait = (ballsShot == 0) ? START_WAIT : CHAMBER_WAIT;
+                if (shootTimer.seconds() >= currentWait) {
                     artifactTransfer.setDirection(DcMotorSimple.Direction.FORWARD);
-                    artifactTransfer.setPower(1); //cool
+                    artifactTransfer.setPower(1);
                     shootTimer.reset();
                     shootSubState = 2;
                 }
                 break;
             case 2:
-                double pushTime = (ballsShot == 0 && !isSecondPhase) ? ATM_PUSH_TIME_FIRST : ATM_PUSH_TIME_NORMAL;
+                double pushTime = (ballsShot == 0 && !isSecondPhase)
+                        ? ATM_PUSH_TIME_FIRST
+                        : ATM_PUSH_TIME_NORMAL;
                 if (shootTimer.seconds() >= pushTime) {
                     artifactTransfer.setPower(0);
                     shootSubState = 3;
@@ -342,11 +379,12 @@ public class GPPAutonomous extends LinearOpMode {
                 if (ballsShot >= 3) {
                     flywheelMotor.setVelocity(0);
                     if (!isSecondPhase) {
-                        // GPP targets are already set in init, go to pre-intake
+                        // === LOGIC CHANGE: DIRECT TRANSITION TO GPP TARGET ===
+                        // We already set preIntakePose in init, so just go there.
                         buildAndFollowPath(shootPose, preIntakePose);
                         transitionTo(AutoState.NAV_TO_PRE_INTAKE);
                     } else {
-                        // All balls shot in second phase, go to LEAVE_MARK
+                        // Second phase done, go to park
                         Pose leavePose = (selectedAlliance == Alliance.BLUE) ? LEAVE_MARK_BLUE : LEAVE_MARK_RED;
                         buildAndFollowPath(shootPose, leavePose);
                         transitionTo(AutoState.LEAVE_MARK);
@@ -365,7 +403,8 @@ public class GPPAutonomous extends LinearOpMode {
     }
 
     private void buildAndFollowPath(Pose start, Pose end) {
-        currentPath = follower.pathBuilder()
+        currentPath = follower
+                .pathBuilder()
                 .addPath(new BezierLine(start, end))
                 .setLinearHeadingInterpolation(start.getHeading(), end.getHeading())
                 .build();
@@ -394,9 +433,6 @@ public class GPPAutonomous extends LinearOpMode {
         telemetry.addData("Alliance", selectedAlliance);
         telemetry.addData("Flywheel Vel", flywheelMotor.getVelocity());
         telemetry.addData("Balls Shot", ballsShot);
-        if (finalIntakePose != null) {
-            telemetry.addData("Target Final X", "%.1f", finalIntakePose.getX());
-        }
         telemetry.update();
     }
 }
