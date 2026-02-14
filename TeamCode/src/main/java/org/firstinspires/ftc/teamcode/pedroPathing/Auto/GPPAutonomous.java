@@ -270,7 +270,7 @@ public class GPPAutonomous extends LinearOpMode {
             chamberSpinner.setTargetPosition((int) chamberTargetPos);
             chamberSpinner.setPower(1);
 
-            // Build path and start moving
+
             buildAndFollowPath(finalIntakePose, shootPose);
             flywheelMotor.setVelocity(SHOOT_VELOCITY);
             transitionTo(AutoState.NAV_TO_SHOOT);
@@ -380,11 +380,11 @@ public class GPPAutonomous extends LinearOpMode {
                     flywheelMotor.setVelocity(0);
                     if (!isSecondPhase) {
                         // === LOGIC CHANGE: DIRECT TRANSITION TO GPP TARGET ===
-                        // We already set preIntakePose in init, so just go there.
+                        // We already set preIntakePose in init so just go there.
                         buildAndFollowPath(shootPose, preIntakePose);
                         transitionTo(AutoState.NAV_TO_PRE_INTAKE);
                     } else {
-                        // Second phase done, go to park
+                        // Second phase donego to park
                         Pose leavePose = (selectedAlliance == Alliance.BLUE) ? LEAVE_MARK_BLUE : LEAVE_MARK_RED;
                         buildAndFollowPath(shootPose, leavePose);
                         transitionTo(AutoState.LEAVE_MARK);

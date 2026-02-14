@@ -17,7 +17,7 @@ import com.qualcomm.robotcore.util.RobotLog;
 import org.firstinspires.ftc.teamcode.pedroPathing.Constants;
 import org.firstinspires.ftc.teamcode.pedroPathing.mechanisms.Limelight;
 import org.firstinspires.ftc.teamcode.pedroPathing.vision.GoalTargeter;
-import org.firstinspires.ftc.teamcode.pedroPathing.vision.MotifDetector; //cool2
+import org.firstinspires.ftc.teamcode.pedroPathing.vision.MotifDetector;
 import org.firstinspires.ftc.teamcode.pedroPathing.vision.VisionData;
 
 @Autonomous(name = "Limelight Close (Motif v1.1.3)", group = "Auto")
@@ -88,7 +88,7 @@ public class AutonomousModeClose extends LinearOpMode {
     // Intake Sequencing Variables
     private int intakeSeqStage = 0;
     private static final double INTAKE_SPIN_DELAY = 0.200; // 500ms
-    private static final double INTAKE_FIRST_DELAY = 0.700;
+    private static final double INTAKE_FIRST_DELAY = 3.0;
 
     // ===================== FIELD COORDINATES =====================
 
@@ -144,6 +144,7 @@ public class AutonomousModeClose extends LinearOpMode {
         initHardware();
 
         // ===================== SELECTION LOOP =====================
+        // While in INIT, we DO NOT move the servo anymore.
         while (!isStarted() && !isStopRequested()) {
             // TOGGLE LOGIC
             if (gamepad1.left_bumper) {
@@ -156,12 +157,7 @@ public class AutonomousModeClose extends LinearOpMode {
             goalTargeter.update();
             motifDetector.update(goalTargeter.getVisionData());
 
-            // Telemetry-driven Servo positioning during selection
-            if (selectedAlliance == Alliance.BLUE) {
-                LimeServo.setPosition(0.75); // Move to right to see obelisk on blue
-            } else {
-                LimeServo.setPosition(0.25); // Move to left to see obelisk on red
-            }
+            // --- MOVED SERVO LOGIC OUT OF HERE ---
 
             // Telemetry
             telemetry.addLine("=== LIMELIGHT CLOSE (ALLIANCE SELECTION) ===");
@@ -173,12 +169,16 @@ public class AutonomousModeClose extends LinearOpMode {
         }
 
         // ===================== SETUP BASED ON SELECTION =====================
+        // This runs immediately after pressing PLAY
         if (selectedAlliance == Alliance.BLUE) {
             startPose = BLUE_START;
             shootPose = BLUE_SHOOT;
+            // Move Servo NOW
+            LimeServo.setPosition(0.75); // Move to right to see obelisk on blue
         } else {
             startPose = RED_START;
-            shootPose = RED_SHOOT;
+            // Move Servo NOW
+            LimeServo.setPosition(0.25); // Move to left to see obelisk on red
         }
 
         follower.setStartingPose(startPose);
@@ -243,8 +243,8 @@ public class AutonomousModeClose extends LinearOpMode {
 
         PIDFCoefficients pidfNew = new PIDFCoefficients(20.3025, 0, 0, 20.7020); //f=11 p =10
         flywheelMotor.setPIDFCoefficients(
-            DcMotor.RunMode.RUN_USING_ENCODER,
-            pidfNew
+                DcMotor.RunMode.RUN_USING_ENCODER,
+                pidfNew
         );
 
         intakeMotor.setDirection(DcMotorSimple.Direction.REVERSE);
@@ -260,7 +260,7 @@ public class AutonomousModeClose extends LinearOpMode {
         limelight.switchPipeline(0);
         goalTargeter = new GoalTargeter(limelight);
         motifDetector = new MotifDetector();
-        
+
         // Default to center on hardware init
         LimeServo.setPosition(0.5);
     }
@@ -270,8 +270,8 @@ public class AutonomousModeClose extends LinearOpMode {
     private void runScanMotif() {
         // Continuously check for confident detection while driving
         if (
-            detectedMotif == MotifDetector.Motif.UNKNOWN &&
-            motifDetector.hasConfidentDetection()
+                detectedMotif == MotifDetector.Motif.UNKNOWN &&
+                        motifDetector.hasConfidentDetection()
         ) {
             detectedMotif = motifDetector.getDetectedMotif();
             decisionReason = "Confident (Drive)";
@@ -290,10 +290,10 @@ public class AutonomousModeClose extends LinearOpMode {
                 }
                 RobotLog.d("AUTO", "Motif Locked (Final): " + detectedMotif);
             }
-            
+
             // Once we reach the first shoot position, center the camera for shots
             LimeServo.setPosition(0.5);
-            
+
             transitionTo(AutoState.SHOOT_PRELOADS);
         }
     }
@@ -436,7 +436,7 @@ public class AutonomousModeClose extends LinearOpMode {
             case 1:
                 if (shootTimer.seconds() >= CHAMBER_WAIT) {
                     artifactTransfer.setDirection(
-                        DcMotorSimple.Direction.FORWARD
+                            DcMotorSimple.Direction.FORWARD
                     );
                     artifactTransfer.setPower(1);
                     shootTimer.reset();
@@ -445,8 +445,8 @@ public class AutonomousModeClose extends LinearOpMode {
                 break;
             case 2:
                 double pushTime = (ballsShot == 0 && !isSecondPhase)
-                    ? ATM_PUSH_TIME_FIRST
-                    : ATM_PUSH_TIME_NORMAL;
+                        ? ATM_PUSH_TIME_FIRST
+                        : ATM_PUSH_TIME_NORMAL;
                 if (shootTimer.seconds() >= pushTime) {
                     artifactTransfer.setPower(0);
                     shootSubState = 3;
@@ -521,11 +521,11 @@ public class AutonomousModeClose extends LinearOpMode {
         }
 
         RobotLog.d(
-            "AUTO",
-            "Targets: Pre=" +
-                preIntakePose.toString() +
-                " | Final=" +
-                finalIntakePose.toString()
+                "AUTO",
+                "Targets: Pre=" +
+                        preIntakePose.toString() +
+                        " | Final=" +
+                        finalIntakePose.toString()
         );
 
         // Build first leg: Shoot -> Pre-Intake
@@ -534,10 +534,10 @@ public class AutonomousModeClose extends LinearOpMode {
 
     private void buildAndFollowPath(Pose start, Pose end) {
         currentPath = follower
-            .pathBuilder()
-            .addPath(new BezierLine(start, end))
-            .setLinearHeadingInterpolation(start.getHeading(), end.getHeading())
-            .build();
+                .pathBuilder()
+                .addPath(new BezierLine(start, end))
+                .setLinearHeadingInterpolation(start.getHeading(), end.getHeading())
+                .build();
         follower.followPath(currentPath);
     }
 

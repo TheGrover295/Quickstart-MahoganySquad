@@ -278,7 +278,7 @@ public class AutonomousMode extends LinearOpMode {
             RobotLog.d("AUTO", "Motif Locked (Confident): " + detectedMotif);
         }
 
-        // Once we arrive at the shooting position, lock in whatever we found
+        // Once we arrive at the shooting position lock in whatever we found
         if (!follower.isBusy()) {
             if (detectedMotif == MotifDetector.Motif.UNKNOWN) {
                 MotifDetector.Motif lastSeen = motifDetector.getDetectedMotif();
