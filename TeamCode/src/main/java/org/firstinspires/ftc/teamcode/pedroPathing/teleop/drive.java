@@ -30,7 +30,7 @@ public class drive extends LinearOpMode {
     
     private Servo LimeServo;
     
-    // Classified as Servo because it is plugged into the Servo section of the Hub
+
     private Servo flywheelReadyLed;
 
     // --- Subsystems ---
@@ -44,9 +44,9 @@ public class drive extends LinearOpMode {
     private boolean goalLockEnabled = false;
 
     // --- Flywheel Velocities ---
-    // Update these values to your preference!
+
     private double HIGH_VELOCITY = 1350; // 1298
-    private double LOW_VELOCITY = 1035;   // Placeholder for lower speed
+    private double LOW_VELOCITY = 1035;
 
     // --- Slow Mode Variables ---
     private boolean slowMode = false;

@@ -11,24 +11,31 @@ import com.qualcomm.robotcore.hardware.DcMotor;
 import com.qualcomm.robotcore.hardware.DcMotorEx;
 import com.qualcomm.robotcore.hardware.DcMotorSimple;
 import com.qualcomm.robotcore.hardware.PIDFCoefficients;
+import com.qualcomm.robotcore.hardware.Servo;
 import com.qualcomm.robotcore.util.ElapsedTime;
 import org.firstinspires.ftc.teamcode.pedroPathing.Constants;
+import org.firstinspires.ftc.teamcode.pedroPathing.mechanisms.Limelight;
 
-@Autonomous(name = "PPG Autonomous Close", group = "Auto")
+@Autonomous(name = "PPG Auto Close =", group = "Auto")
 public class PPGAutonomous extends LinearOpMode {
 
     // ===================== ALLIANCE SELECTION =====================
     private enum Alliance {
-        RED, BLUE
+        RED,
+        BLUE,
     }
+
     private Alliance selectedAlliance = Alliance.BLUE; // Default
 
     // ===================== SUBSYSTEMS =====================
     private Follower follower;
+    private Limelight limelight;
+
     private DcMotorEx flywheelMotor;
     private DcMotor chamberSpinner;
     private DcMotor intakeMotor;
     private CRServo artifactTransfer;
+    private Servo LimeServo;
 
     // ===================== TIMING =====================
     private ElapsedTime stateTimer = new ElapsedTime();
@@ -45,18 +52,19 @@ public class PPGAutonomous extends LinearOpMode {
         NAV_TO_SHOOT,
         ALIGN_AND_SHOOT,
         LEAVE_MARK,
-        DONE
+        DONE,
     }
+
     private AutoState currentState = AutoState.INIT;
 
     // ===================== CONFIGURATION =====================
     private static final double NAV_TIMEOUT_SEC = 5.0;
     private static final double PICKUP_TIMEOUT_SEC = 2.0;
 
-    private static final double SHOOT_VELOCITY = 1025;
-    private static final double CHAMBER_WAIT = 1.8;
-    private static final double START_WAIT = 2.4; 
-    private static final double ATM_PUSH_TIME_FIRST = 2.0;
+    private static final double SHOOT_VELOCITY = 1035;
+
+    private static final double CHAMBER_WAIT = 1.7;
+    private static final double ATM_PUSH_TIME_FIRST = 0.9;
     private static final double ATM_PUSH_TIME_NORMAL = 0.9;
 
     // --- Chamber Stepper Variables ---
@@ -68,21 +76,26 @@ public class PPGAutonomous extends LinearOpMode {
     // Intake Sequencing Variables
     private int intakeSeqStage = 0;
     private static final double INTAKE_SPIN_DELAY = 0.200;
-    private static final double INTAKE_FIRST_DELAY = 0.700;
+    private static final double INTAKE_FIRST_DELAY = 3.0;
 
-    // ===================== FIELD COORDINATES =====================
+    // ===================== FIELD COORDINATES (PPG SPECIFIC) =====================
 
     // --- BLUE COORDINATES ---
     private final Pose BLUE_START = new Pose(20.968, 122.296, Math.toRadians(325));
-    private final Pose BLUE_SHOOT = new Pose(59.686, 84.116, Math.toRadians(318));
-    private final Pose BLUE_INTAKE_PPG = new Pose(56, 82, Math.toRadians(-180));
-    private final Pose BLUE_INTAKE_PPG_END = new Pose(35, 82, Math.toRadians(-180));
+    private final Pose BLUE_SHOOT = new Pose(52.686, 96.116, Math.toRadians(318));
+
+    // PPG Specific Points (Blue)
+    private final Pose BLUE_INTAKE_PPG = new Pose(58, 90, Math.toRadians(-180));
+    private final Pose BLUE_INTAKE_PPG_END = new Pose(38, 90, Math.toRadians(-180));
     private final Pose LEAVE_MARK_BLUE = new Pose(48.569, 71.869, Math.toRadians(318));
 
     // --- RED COORDINATES ---
     private final Pose RED_START = new Pose(122.672, 122.457, Math.toRadians(215));
-    private final Pose RED_SHOOT = new Pose(85, 85, Math.toRadians(225));
-    private final Pose RED_INTAKE_PPG = new Pose(82, 64, Math.toRadians(0));
+    // Updated Red Shoot from PPG file
+    private final Pose RED_SHOOT = new Pose(88.314, 91.116, Math.toRadians(225));
+
+    // PPG Specific Points (Red) - From PPG File
+    private final Pose RED_INTAKE_PPG = new Pose(80, 64, Math.toRadians(0));
     private final Pose RED_INTAKE_PPG_END = new Pose(115, 64, Math.toRadians(0));
     private final Pose LEAVE_MARK_RED = new Pose(97, 73, Math.toRadians(225));
 
@@ -92,6 +105,8 @@ public class PPGAutonomous extends LinearOpMode {
     private Pose preIntakePose;
     private Pose finalIntakePose;
     private Pose leavePose;
+
+    private PathChain currentPath;
 
     // --- VARIABLES ---
     private int ballsShot = 0;
@@ -104,91 +119,77 @@ public class PPGAutonomous extends LinearOpMode {
 
         // ===================== SELECTION LOOP =====================
         while (!isStarted() && !isStopRequested()) {
+
             if (gamepad1.left_bumper) {
                 selectedAlliance = Alliance.RED;
             } else if (gamepad1.right_bumper) {
                 selectedAlliance = Alliance.BLUE;
             }
 
-            telemetry.addLine("=== PPG AUTONOMOUS CLOSE (ALLIANCE SELECTION) ===");
+            telemetry.addLine("=== PPG AUTO CLOSE (UPDATED LOGIC) ===");
             telemetry.addData("Selected Alliance", selectedAlliance);
-            telemetry.addLine("LB = RED | RB = BLUE");
+            telemetry.addLine("This will run PPG path ONLY");
             telemetry.update();
         }
 
-        // ===================== SETUP BASED ON SELECTION =====================
+        // ===================== SETUP POINTS =====================
         if (selectedAlliance == Alliance.BLUE) {
             startPose = BLUE_START;
             shootPose = BLUE_SHOOT;
             preIntakePose = BLUE_INTAKE_PPG;
             finalIntakePose = BLUE_INTAKE_PPG_END;
             leavePose = LEAVE_MARK_BLUE;
+
+            LimeServo.setPosition(0.75);
         } else {
             startPose = RED_START;
             shootPose = RED_SHOOT;
             preIntakePose = RED_INTAKE_PPG;
             finalIntakePose = RED_INTAKE_PPG_END;
             leavePose = LEAVE_MARK_RED;
+
+            LimeServo.setPosition(0.25);
         }
 
         follower.setStartingPose(startPose);
         buildAndFollowPath(startPose, shootPose);
         flywheelMotor.setVelocity(SHOOT_VELOCITY);
+
+        // Center servo for shooting
+        LimeServo.setPosition(0.5);
+
+        // SKIP SCANNING -> GO STRAIGHT TO SHOOT
         transitionTo(AutoState.SHOOT_PRELOADS);
 
         // ===================== RUN LOOP =====================
         while (opModeIsActive()) {
             follower.update();
 
+            // Keep Limelight update if needed for background tasks,
+            // but we are not using it for navigation decision making here.
+            // goalTargeter.update();
+
             switch (currentState) {
                 case SHOOT_PRELOADS:
-                    if (!follower.isBusy()) runShootingLogic(false);
+                    runShootPreloads();
                     break;
                 case NAV_TO_PRE_INTAKE:
-                    if (!follower.isBusy() && stateTimer.seconds() > 0.3) {
-                        intakeMotor.setPower(1.0);
-                        chamberTargetPos -= BACK_TO_INTAKE_TICKS;
-                        chamberSpinner.setTargetPosition((int) chamberTargetPos);
-                        chamberSpinner.setPower(1);
-                        intakeSeqStage = 0;
-                        buildAndFollowPath(preIntakePose, finalIntakePose);
-                        transitionTo(AutoState.INTAKE_DRIVE);
-                    }
+                    runNavToPreIntake();
                     break;
                 case INTAKE_DRIVE:
-                    updateIntakeIndexing();
-                    if (!follower.isBusy() && stateTimer.seconds() > 0.3) {
-                        transitionTo(AutoState.PICKUP_BALLS);
-                    }
+                    runIntakeDrive();
                     break;
                 case PICKUP_BALLS:
-                    updateIntakeIndexing();
-                    if (stateTimer.seconds() > PICKUP_TIMEOUT_SEC) {
-                        buildAndFollowPath(finalIntakePose, shootPose);
-                        flywheelMotor.setVelocity(SHOOT_VELOCITY);
-                        transitionTo(AutoState.NAV_TO_SHOOT);
-                    }
+                    runPickupBalls();
                     break;
                 case NAV_TO_SHOOT:
-                    if (!follower.isBusy() && stateTimer.seconds() > 0.5) {
-                        intakeMotor.setPower(0);
-                        chamberTargetPos += SHOOT_POS_TICKS;
-                        chamberSpinner.setTargetPosition((int) chamberTargetPos);
-                        chamberSpinner.setPower(1);
-                        inSecondShootingPhase = true;
-                        ballsShot = 0;
-                        shootSubState = 0;
-                        transitionTo(AutoState.ALIGN_AND_SHOOT);
-                    }
+                    runNavToShoot();
                     break;
                 case ALIGN_AND_SHOOT:
-                    flywheelMotor.setVelocity(SHOOT_VELOCITY);
-                    runShootingLogic(true);
+                    runAlignAndShoot();
                     break;
                 case LEAVE_MARK:
-                    if (!follower.isBusy()) {
-                        transitionTo(AutoState.DONE);
-                    }
+                    runLeaveMark();
                     break;
                 case DONE:
                     stopAllMechanisms();
@@ -205,13 +206,17 @@ public class PPGAutonomous extends LinearOpMode {
         chamberSpinner = hardwareMap.get(DcMotor.class, "chamberSpinner");
         intakeMotor = hardwareMap.get(DcMotor.class, "intakeMotor");
         artifactTransfer = hardwareMap.get(CRServo.class, "ATM");
+        LimeServo = hardwareMap.get(Servo.class, "axonLime");
 
         flywheelMotor.setDirection(DcMotorSimple.Direction.REVERSE);
         flywheelMotor.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
         flywheelMotor.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
 
         PIDFCoefficients pidfNew = new PIDFCoefficients(20.3025, 0, 0, 20.7020);
-        flywheelMotor.setPIDFCoefficients(DcMotor.RunMode.RUN_USING_ENCODER, pidfNew);
+        flywheelMotor.setPIDFCoefficients(
+                DcMotor.RunMode.RUN_USING_ENCODER,
+                pidfNew
+        );
 
         intakeMotor.setDirection(DcMotorSimple.Direction.REVERSE);
         chamberSpinner.setDirection(DcMotorSimple.Direction.REVERSE);
@@ -220,46 +225,63 @@ public class PPGAutonomous extends LinearOpMode {
         chamberSpinner.setTargetPosition(0);
         chamberSpinner.setMode(DcMotor.RunMode.RUN_TO_POSITION);
         chamberSpinner.setPower(0.63);
+
+        limelight = new Limelight();
+        limelight.init(hardwareMap);
+        limelight.switchPipeline(0);
+
+        // Default to center on hardware init
+        LimeServo.setPosition(0.5);
     }
 
-    private void runShootingLogic(boolean isSecondPhase) {
-        switch (shootSubState) {
-            case 0:
-                if (ballsShot > 0) moveChamberStep();
-                shootTimer.reset();
-                shootSubState = 1;
-                break;
-            case 1:
-                double currentWait = (ballsShot == 0) ? START_WAIT : CHAMBER_WAIT;
-                if (shootTimer.seconds() >= currentWait) {
-                    artifactTransfer.setDirection(DcMotorSimple.Direction.FORWARD);
-                    artifactTransfer.setPower(1);
-                    shootTimer.reset();
-                    shootSubState = 2;
-                }
-                break;
-            case 2:
-                double pushTime = (ballsShot == 0 && !isSecondPhase) ? ATM_PUSH_TIME_FIRST : ATM_PUSH_TIME_NORMAL;
-                if (shootTimer.seconds() >= pushTime) {
-                    artifactTransfer.setPower(0);
-                    shootSubState = 3;
-                }
-                break;
-            case 3:
-                ballsShot++;
-                if (ballsShot >= 3) {
-                    flywheelMotor.setVelocity(0);
-                    if (!isSecondPhase) {
-                        buildAndFollowPath(shootPose, preIntakePose);
-                        transitionTo(AutoState.NAV_TO_PRE_INTAKE);
-                    } else {
-                        buildAndFollowPath(shootPose, leavePose);
-                        transitionTo(AutoState.LEAVE_MARK);
-                    }
-                } else {
-                    shootSubState = 0;
-                }
-                break;
+    // ===================== LOGIC =====================
+
+    private void runShootPreloads() {
+        if (follower.isBusy()) return;
+        runShootingLogic(false);
+    }
+
+    private void runNavToPreIntake() {
+        if (!follower.isBusy() && stateTimer.seconds() > 0.3) {
+            intakeMotor.setPower(1.0);
+
+            chamberTargetPos -= BACK_TO_INTAKE_TICKS;
+            chamberSpinner.setTargetPosition((int) chamberTargetPos);
+            chamberSpinner.setPower(1);
+
+            intakeSeqStage = 0;
+
+            buildAndFollowPath(preIntakePose, finalIntakePose);
+            transitionTo(AutoState.INTAKE_DRIVE);
+        } else if (stateTimer.seconds() > NAV_TIMEOUT_SEC) {
+            // Failsafe path
+            intakeMotor.setPower(1.0);
+            chamberTargetPos -= BACK_TO_INTAKE_TICKS;
+            chamberSpinner.setTargetPosition((int) chamberTargetPos);
+            chamberSpinner.setPower(1);
+            intakeSeqStage = 0;
+            buildAndFollowPath(preIntakePose, finalIntakePose);
+            transitionTo(AutoState.INTAKE_DRIVE);
+        }
+    }
+
+    private void runIntakeDrive() {
+        updateIntakeIndexing();
+
+        if (!follower.isBusy() && stateTimer.seconds() > 0.3) {
+            transitionTo(AutoState.PICKUP_BALLS);
+        } else if (stateTimer.seconds() > 3.0) {
+            transitionTo(AutoState.PICKUP_BALLS);
+        }
+    }
+
+    private void runPickupBalls() {
+        updateIntakeIndexing();
+
+        if (stateTimer.seconds() > PICKUP_TIMEOUT_SEC) {
+            buildAndFollowPath(finalIntakePose, shootPose);
+            flywheelMotor.setVelocity(SHOOT_VELOCITY);
+            transitionTo(AutoState.NAV_TO_SHOOT);
         }
     }
 
@@ -286,14 +308,100 @@ public class PPGAutonomous extends LinearOpMode {
                     intakeSeqStage = 3;
                 }
                 break;
+            case 3:
+                if (intakeSeqTimer.seconds() >= INTAKE_SPIN_DELAY) {
+                    moveChamberStep();
+                    intakeSeqTimer.reset();
+                    intakeSeqStage = 4;
+                }
+                break;
+        }
+    }
+
+    private void runNavToShoot() {
+        if (!follower.isBusy() && stateTimer.seconds() > 0.5) {
+            intakeMotor.setPower(0);
+            startSecondShootingPhase();
+        } else if (stateTimer.seconds() > NAV_TIMEOUT_SEC) {
+            startSecondShootingPhase();
+        }
+    }
+
+    private void startSecondShootingPhase() {
+        chamberTargetPos += SHOOT_POS_TICKS;
+        chamberSpinner.setTargetPosition((int) chamberTargetPos);
+        chamberSpinner.setPower(1);
+
+        inSecondShootingPhase = true;
+        ballsShot = 0;
+        shootSubState = 0;
+        transitionTo(AutoState.ALIGN_AND_SHOOT);
+    }
+
+    private void runAlignAndShoot() {
+        flywheelMotor.setVelocity(SHOOT_VELOCITY);
+        runShootingLogic(true);
+    }
+
+    private void runShootingLogic(boolean isSecondPhase) {
+        switch (shootSubState) {
+            case 0:
+                if (ballsShot > 0) {
+                    moveChamberStep();
+                }
+                shootTimer.reset();
+                shootSubState = 1;
+                break;
+            case 1:
+                if (shootTimer.seconds() >= CHAMBER_WAIT) {
+                    artifactTransfer.setDirection(DcMotorSimple.Direction.FORWARD);
+                    artifactTransfer.setPower(1);
+                    shootTimer.reset();
+                    shootSubState = 2;
+                }
+                break;
+            case 2:
+                double pushTime = (ballsShot == 0 && !isSecondPhase)
+                        ? ATM_PUSH_TIME_FIRST
+                        : ATM_PUSH_TIME_NORMAL;
+                if (shootTimer.seconds() >= pushTime) {
+                    artifactTransfer.setPower(0);
+                    shootSubState = 3;
+                }
+                break;
+            case 3:
+                ballsShot++;
+                if (ballsShot >= 3) {
+                    flywheelMotor.setVelocity(0);
+                    if (!isSecondPhase) {
+                        // Go back to PPG intake
+                        buildAndFollowPath(shootPose, preIntakePose);
+                        transitionTo(AutoState.NAV_TO_PRE_INTAKE);
+                    } else {
+                        // All balls shot, leave mark
+                        buildAndFollowPath(shootPose, leavePose);
+                        transitionTo(AutoState.LEAVE_MARK);
+                    }
+                } else {
+                    shootSubState = 0;
+                }
+                break;
+        }
+    }
+
+    private void runLeaveMark() {
+        if (!follower.isBusy()) {
+            transitionTo(AutoState.DONE);
         }
     }
 
     private void buildAndFollowPath(Pose start, Pose end) {
-        follower.followPath(follower.pathBuilder()
+        currentPath = follower
+                .pathBuilder()
                 .addPath(new BezierLine(start, end))
                 .setLinearHeadingInterpolation(start.getHeading(), end.getHeading())
-                .build());
+                .build();
+        follower.followPath(currentPath);
     }
 
     private void transitionTo(AutoState newState) {

@@ -144,9 +144,9 @@ public class AutonomousModeClose extends LinearOpMode {
         initHardware();
 
         // ===================== SELECTION LOOP =====================
-        // While in INIT, we DO NOT move the servo anymore.
+
         while (!isStarted() && !isStopRequested()) {
-            // TOGGLE LOGIC
+
             if (gamepad1.left_bumper) {
                 selectedAlliance = Alliance.RED;
             } else if (gamepad1.right_bumper) {
@@ -168,16 +168,17 @@ public class AutonomousModeClose extends LinearOpMode {
             telemetry.update();
         }
 
-        // ===================== SETUP BASED ON SELECTION =====================
-        // This runs immediately after pressing PLAY
+
+
         if (selectedAlliance == Alliance.BLUE) {
             startPose = BLUE_START;
             shootPose = BLUE_SHOOT;
-            // Move Servo NOW
+
             LimeServo.setPosition(0.75); // Move to right to see obelisk on blue
         } else {
             startPose = RED_START;
-            // Move Servo NOW
+            shootPose = RED_SHOOT;
+
             LimeServo.setPosition(0.25); // Move to left to see obelisk on red
         }
 
@@ -268,7 +269,7 @@ public class AutonomousModeClose extends LinearOpMode {
     // ===================== LOGIC =====================
 
     private void runScanMotif() {
-        // Continuously check for confident detection while driving
+        // Continuously check for limeConf detection while driving
         if (
                 detectedMotif == MotifDetector.Motif.UNKNOWN &&
                         motifDetector.hasConfidentDetection()
