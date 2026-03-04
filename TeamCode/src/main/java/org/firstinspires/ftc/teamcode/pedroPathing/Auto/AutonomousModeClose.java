@@ -29,7 +29,7 @@ public class AutonomousModeClose extends LinearOpMode {
         BLUE,
     }
 
-    private Alliance selectedAlliance = Alliance.BLUE; // Default
+    private Alliance selectedAlliance = Alliance.BLUE; // test
 
     // ===================== SUBSYSTEMS =====================
     private Follower follower;
