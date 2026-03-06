@@ -9,6 +9,7 @@ import com.qualcomm.robotcore.hardware.Servo;
 import com.qualcomm.robotcore.hardware.Gamepad;
 import com.qualcomm.robotcore.hardware.DcMotorEx;
 import com.qualcomm.robotcore.hardware.PIDFCoefficients;
+import com.qualcomm.robotcore.util.ElapsedTime; // ADDED
 import com.arcrobotics.ftclib.gamepad.GamepadEx;
 import com.arcrobotics.ftclib.gamepad.GamepadKeys;
 import com.bylazar.panels.Panels;
@@ -27,9 +28,9 @@ public class drive extends LinearOpMode {
 
     private DcMotor chamberSpinner;
     public CRServo artifactTransfer;
-    
+
     private Servo LimeServo;
-    
+
 
     private Servo flywheelReadyLed;
 
@@ -68,6 +69,12 @@ public class drive extends LinearOpMode {
     private int flywheelMode = 0; // 0: off, 1: high, 2: low
     private int shootState = 0;
 
+    // --- Auto Shoot Variables (ADDED) ---
+    private ElapsedTime autoShootTimer = new ElapsedTime();
+    private int autoBallsShot = 0;
+    private final double CHAMBER_WAIT_MS = 1700; // Matches Auto (1.7s)
+    private final double ATM_PUSH_TIME_MS = 900; // Matches Auto (0.9s)
+
     private GamepadEx operatorOp;
     private GamepadEx driverOp;
 
@@ -85,7 +92,7 @@ public class drive extends LinearOpMode {
         intakeMotor = hardwareMap.get(DcMotor.class, "intakeMotor");
         chamberSpinner = hardwareMap.get(DcMotor.class, "chamberSpinner");
         artifactTransfer = hardwareMap.get(CRServo.class, "ATM");
-        
+
 
         flywheelReadyLed = hardwareMap.get(Servo.class, "flywheelLed");
         LimeServo = hardwareMap.get(Servo.class, "axonLime");
@@ -191,9 +198,9 @@ public class drive extends LinearOpMode {
 
 
             // =========================================================
-            //                  LIMELIGHT SERVO LOGIC 
+            //                  LIMELIGHT SERVO LOGIC
             // =========================================================
-            
+
             if (operatorOp.wasJustPressed(GamepadKeys.Button.DPAD_RIGHT)) {
                 LimeServo.setPosition(0.75); // ~45 degrees right. BLUE SIDE
             } else if (operatorOp.wasJustPressed(GamepadKeys.Button.DPAD_LEFT)) {
@@ -219,7 +226,7 @@ public class drive extends LinearOpMode {
                 if (flywheelMode == 2) flywheelMode = 0;
                 else flywheelMode = 2;
             }
-            
+
             lastLT = ltPressed;
             lastRT = rtPressed;
 
@@ -268,7 +275,17 @@ public class drive extends LinearOpMode {
                 gamepad1.setLedColor(255, 0, 0, Gamepad.LED_DURATION_CONTINUOUS);
             }
 
-            // Artifact Transfer
+            // --- AUTO SHOOT TRIGGER (ADDED) ---
+            // Trigger auto-shoot sequence on Operator Right Bumper if close flywheel is active
+            if (operatorOp.wasJustPressed(GamepadKeys.Button.RIGHT_BUMPER) && shootState == 0) {
+                if (flywheelMode == 2) {
+                    shootState = 1;
+                    autoBallsShot = 0;
+                    gamepad2.rumble(500); // Vibrate controller to confirm start
+                }
+            }
+
+            // Artifact Transfer (Guarded by shootState == 0 to prevent manual override during auto shoot)
             boolean triggerPressed = gamepad1.right_trigger > 0.1;
             boolean dpadRightPressed = gamepad1.dpad_right;
 
@@ -280,13 +297,48 @@ public class drive extends LinearOpMode {
                 artifactTransfer.setPower(0);
             }
 
-            // Chamber Logic
-            if (gamepad2.a && !lastA) moveChamberStep();
-            if (gamepad2.b && !lastB) { chamberTargetPos += shootPosticks; updateChamber(); }
-            if (gamepad2.y && !lastY) { chamberTargetPos -= 100; updateChamber(); }
-            if (gamepad2.x && !lastX) { chamberTargetPos += superReverseTicks; updateChamber(); }
-
+            // Chamber Logic (Guarded by shootState == 0)
+            if (shootState == 0) {
+                if (gamepad2.a && !lastA) moveChamberStep();
+                if (gamepad2.b && !lastB) { chamberTargetPos += shootPosticks; updateChamber(); }
+                if (gamepad2.y && !lastY) { chamberTargetPos -= 100; updateChamber(); }
+                if (gamepad2.x && !lastX) { chamberTargetPos += superReverseTicks; updateChamber(); }
+            }
             lastA = gamepad2.a; lastB = gamepad2.b; lastY = gamepad2.y; lastX = gamepad2.x;
+
+            // =========================================================
+            //                  AUTO SHOOT STATE MACHINE (ADDED)
+            // =========================================================
+            if (shootState > 0) {
+                switch (shootState) {
+                    case 1: // Prep chamber
+                        if (autoBallsShot > 0) {
+                            moveChamberStep();
+                        }
+                        autoShootTimer.reset();
+                        shootState = 2;
+                        break;
+                    case 2: // Wait for chamber delay, push ATM
+                        if (autoShootTimer.milliseconds() >= CHAMBER_WAIT_MS) {
+                            artifactTransfer.setDirection(DcMotorSimple.Direction.FORWARD);
+                            artifactTransfer.setPower(1);
+                            autoShootTimer.reset();
+                            shootState = 3;
+                        }
+                        break;
+                    case 3:
+                        if (autoShootTimer.milliseconds() >= ATM_PUSH_TIME_MS) {
+                            artifactTransfer.setPower(0);
+                            autoBallsShot++;
+                            if (autoBallsShot >= 3) {
+                                shootState = 0;
+                            } else {
+                                shootState = 1;
+                            }
+                        }
+                        break;
+                }
+            }
 
             // =========================================================
             //                       TELEMETRY
@@ -297,9 +349,10 @@ public class drive extends LinearOpMode {
             if(flywheeling) {
                 telemetry.addData("Target", flywheelMode == 1 ? "HIGH ("+HIGH_VELOCITY+")" : "LOW ("+LOW_VELOCITY+")");
             }
+            telemetry.addData("Auto Shoot State", shootState > 0 ? ("SHOOTING BALL " + (autoBallsShot + 1)) : "IDLE");
             telemetry.addData("Chamber Pos", chamberSpinner.getCurrentPosition());
             telemetry.addData("Intaking", intaking);
-            
+
             if (goalLockEnabled) {
                 telemetry.addData("Vision Status", goalTargeter.hasTarget() ? "LOCKED" : "SEARCHING");
                 telemetry.addData("Tag ID", goalTargeter.hasTarget() ? goalTargeter.getVisionData().getTagID() : "None");
