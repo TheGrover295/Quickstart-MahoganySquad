@@ -8,15 +8,13 @@ import com.qualcomm.robotcore.hardware.DcMotorSimple;
 import com.qualcomm.robotcore.hardware.IMU;
 import org.firstinspires.ftc.robotcore.external.navigation.AngleUnit;
 
-@TeleOp(name = "Field Centric Drive")
-public class FieldCentricTest extends LinearOpMode {
+@TeleOp(name = "Field Centric Test Old", group = "Test")
+public class FieldCentricTest2 extends LinearOpMode {
 
     // Define chassis motors
     private DcMotor leftFront, leftBack, rightFront, rightBack;
     // Define IMU (Gyroscope), the core of spatial awareness
     private IMU imu;
-
-
 
     @Override
     public void runOpMode() {
