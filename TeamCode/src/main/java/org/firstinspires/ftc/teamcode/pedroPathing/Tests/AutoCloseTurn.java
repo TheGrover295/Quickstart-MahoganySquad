@@ -97,13 +97,13 @@ public class AutoCloseTurn extends LinearOpMode {
     private final Pose BLUE_START = new Pose(20.968, 122.296, Math.toRadians(325)); //325
     private final Pose BLUE_SHOOT = new Pose(52.686, 96.116, Math.toRadians(318));
 
-    private final Pose BLUE_INTAKE_GPP = new Pose(52.686, 43, Math.toRadians(-180)); //
-    private final Pose BLUE_INTAKE_PGP = new Pose(52.686, 67, Math.toRadians(-180)); //
-    private final Pose BLUE_INTAKE_PPG = new Pose(52.686, 90, Math.toRadians(-180)); //
+    private final Pose BLUE_INTAKE_GPP = new Pose(52.686, 43, Math.toRadians(180)); //
+    private final Pose BLUE_INTAKE_PGP = new Pose(52.686, 67, Math.toRadians(180)); //67
+    private final Pose BLUE_INTAKE_PPG = new Pose(52.686, 90, Math.toRadians(180)); //
 
-    private final Pose BLUE_INTAKE_GPP_END = new Pose(37, 43, Math.toRadians(-180)); //
-    private final Pose BLUE_INTAKE_PGP_END = new Pose(37, 67, Math.toRadians(-180)); //
-    private final Pose BLUE_INTAKE_PPG_END = new Pose(42, 90, Math.toRadians(-180)); //
+    private final Pose BLUE_INTAKE_GPP_END = new Pose(37, 43, Math.toRadians(180)); //
+    private final Pose BLUE_INTAKE_PGP_END = new Pose(37, 67, Math.toRadians(180)); //
+    private final Pose BLUE_INTAKE_PPG_END = new Pose(42, 90, Math.toRadians(180)); //
 
     // --- RED COORDINATES ---
     private final Pose RED_START = new Pose(122.672, 122.457, Math.toRadians(215));
