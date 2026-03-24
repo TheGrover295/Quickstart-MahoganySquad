@@ -1,4 +1,4 @@
-package org.firstinspires.ftc.teamcode.pedroPathing.Auto;
+package org.firstinspires.ftc.teamcode.pedroPathing.Tests;
 
 import com.pedropathing.follower.Follower;
 import com.pedropathing.geometry.BezierLine;
@@ -20,8 +20,8 @@ import org.firstinspires.ftc.teamcode.pedroPathing.mechanisms.Limelight;
 import org.firstinspires.ftc.teamcode.pedroPathing.vision.GoalTargeter;
 import org.firstinspires.ftc.teamcode.pedroPathing.vision.MotifDetector;
 
-@Autonomous(name = "AutoCloseTurn", group = "Tests")
-public class AutoCloseTurn extends LinearOpMode {
+@Autonomous(name = "AutoCloseTurn V2", group = "Tests")
+public class AutoCloseTurnV2 extends LinearOpMode {
 
     // ===================== ALLIANCE =====================
     private enum Alliance {
@@ -44,9 +44,9 @@ public class AutoCloseTurn extends LinearOpMode {
     private Servo limeServo;
 
     // ===================== TIMERS =====================
-    private final ElapsedTime runtime = new ElapsedTime();
-    private final ElapsedTime stateTimer = new ElapsedTime();
-    private final ElapsedTime shootTimer = new ElapsedTime();
+    private final ElapsedTime runtime        = new ElapsedTime();
+    private final ElapsedTime stateTimer     = new ElapsedTime();
+    private final ElapsedTime shootTimer     = new ElapsedTime();
     private final ElapsedTime intakeSeqTimer = new ElapsedTime();
 
     // ===================== STATE MACHINE =====================
@@ -66,23 +66,28 @@ public class AutoCloseTurn extends LinearOpMode {
     private AutoState currentState = AutoState.INIT;
 
     // ===================== CONFIG =====================
-    private static final double SCAN_TIMEOUT_SEC = 2.5;
-    private static final double NAV_TIMEOUT_SEC = 5.0;
+    private static final double SCAN_TIMEOUT_SEC   = 2.5;
+    private static final double NAV_TIMEOUT_SEC    = 5.0;
     private static final double PICKUP_TIMEOUT_SEC = 2.0;
 
     private static final double SHOOT_VELOCITY = 1035;
 
-    private static final double CHAMBER_WAIT = 1.7;
-    private static final double ATM_PUSH_TIME_FIRST = 0.9;
-    private static final double ATM_PUSH_TIME_NORMAL = 0.9;
+    private static final double CHAMBER_WAIT          = 1.7;
+    private static final double ATM_PUSH_TIME_FIRST   = 0.9;
+    private static final double ATM_PUSH_TIME_NORMAL  = 0.9;
 
-    private final double TICKS_PER_STEP = 475.06;
-    private final double SHOOT_POS_TICKS = 100;
+    // Small positional nudge (inches) so Pedro never gets a zero-length segment
+    // when the robot turns in place. Tune this to 0 if your Pedro build handles
+    // zero-distance segments correctly; otherwise keep at 1.0–2.0 inches.
+    private static final double TURN_NUDGE_INCHES = 1.5;
+
+    private final double TICKS_PER_STEP       = 475.06;
+    private final double SHOOT_POS_TICKS      = 100;
     private final double BACK_TO_INTAKE_TICKS = 100;
     private double chamberTargetPos = 0;
 
     private int intakeSeqStage = 0;
-    private static final double INTAKE_SPIN_DELAY = 0.200;
+    private static final double INTAKE_SPIN_DELAY  = 0.200;
     private static final double INTAKE_FIRST_DELAY = 3.0;
 
     // ===================== FIELD COORDINATES =====================
@@ -91,27 +96,27 @@ public class AutoCloseTurn extends LinearOpMode {
     private final Pose BLUE_START = new Pose(20.968, 122.296, Math.toRadians(325));
     private final Pose BLUE_SHOOT = new Pose(52.686, 96.116, Math.toRadians(318));
 
-    private final Pose BLUE_INTAKE_GPP = new Pose(45, 36, Math.toRadians(180)); //64.43
-    private final Pose BLUE_INTAKE_PGP = new Pose(45, 60, Math.toRadians(180)); //59,67
-    private final Pose BLUE_INTAKE_PPG = new Pose(45, 84, Math.toRadians(180)); //58,90
+    private final Pose BLUE_INTAKE_GPP = new Pose(45, 36,  Math.toRadians(180));
+    private final Pose BLUE_INTAKE_PGP = new Pose(45, 60,  Math.toRadians(180));
+    private final Pose BLUE_INTAKE_PPG = new Pose(45, 84,  Math.toRadians(180));
 
-    private final Pose BLUE_INTAKE_GPP_END = new Pose(37, 36, Math.toRadians(180)); //37,43
-    private final Pose BLUE_INTAKE_PGP_END = new Pose(37, 60, Math.toRadians(180)); //37,67
-    private final Pose BLUE_INTAKE_PPG_END = new Pose(42, 94, Math.toRadians(180)); //42,90
+    private final Pose BLUE_INTAKE_GPP_END = new Pose(37, 36,  Math.toRadians(180));
+    private final Pose BLUE_INTAKE_PGP_END = new Pose(37, 60,  Math.toRadians(180));
+    private final Pose BLUE_INTAKE_PPG_END = new Pose(42, 94,  Math.toRadians(180));
 
     private final Pose LEAVE_MARK_BLUE = new Pose(48, 71, Math.toRadians(318));
 
     // --- RED ---
     private final Pose RED_START = new Pose(122.672, 122.457, Math.toRadians(215));
-    private final Pose RED_SHOOT = new Pose(88.314, 91.116, Math.toRadians(225));
+    private final Pose RED_SHOOT = new Pose(88.314,   91.116, Math.toRadians(225));
 
-    private final Pose RED_INTAKE_GPP = new Pose(102, 36, Math.toRadians(0)); //80,20
-    private final Pose RED_INTAKE_PGP = new Pose(102, 48, Math.toRadians(0)); //84,42
-    private final Pose RED_INTAKE_PPG = new Pose(102, 84, Math.toRadians(0)); //80,42
+    private final Pose RED_INTAKE_GPP = new Pose(102, 36,  Math.toRadians(0));
+    private final Pose RED_INTAKE_PGP = new Pose(102, 48,  Math.toRadians(0));
+    private final Pose RED_INTAKE_PPG = new Pose(102, 84,  Math.toRadians(0));
 
-    private final Pose RED_INTAKE_GPP_END = new Pose(102, 36, Math.toRadians(0)); //112,20
-    private final Pose RED_INTAKE_PGP_END = new Pose(112, 60, Math.toRadians(0)); //112,42
-    private final Pose RED_INTAKE_PPG_END = new Pose(115, 84, Math.toRadians(0)); //112, 64
+    private final Pose RED_INTAKE_GPP_END = new Pose(102, 36,  Math.toRadians(0));
+    private final Pose RED_INTAKE_PGP_END = new Pose(112, 60,  Math.toRadians(0));
+    private final Pose RED_INTAKE_PPG_END = new Pose(115, 84,  Math.toRadians(0));
 
     private final Pose LEAVE_MARK_RED = new Pose(97, 73, Math.toRadians(225));
 
@@ -125,15 +130,18 @@ public class AutoCloseTurn extends LinearOpMode {
 
     // ===================== RUNTIME VARIABLES =====================
     private MotifDetector.Motif detectedMotif = MotifDetector.Motif.UNKNOWN;
-    private int ballsShot = 0;
-    private int shootSubState = 0;
+    private int     ballsShot             = 0;
+    private int     shootSubState         = 0;
     private boolean inSecondShootingPhase = false;
-    private String decisionReason = "Waiting";
+    private String  decisionReason        = "Waiting";
+
+    // ===================== MAIN =====================
 
     @Override
     public void runOpMode() throws InterruptedException {
         initHardware();
 
+        // ---- Pre-match loop: alliance selection + live motif preview ----
         while (!isStarted() && !isStopRequested()) {
             if (gamepad1.left_bumper) {
                 selectedAlliance = Alliance.RED;
@@ -152,6 +160,7 @@ public class AutoCloseTurn extends LinearOpMode {
             telemetry.update();
         }
 
+        // ---- Set alliance-specific starting data ----
         if (selectedAlliance == Alliance.BLUE) {
             startPose = BLUE_START;
             shootPose = BLUE_SHOOT;
@@ -172,49 +181,25 @@ public class AutoCloseTurn extends LinearOpMode {
         currentState = AutoState.SCAN_MOTIF;
         stateTimer.reset();
 
+        // ---- Main loop ----
         while (opModeIsActive()) {
             follower.update();
             goalTargeter.update();
             motifDetector.update(goalTargeter.getVisionData());
 
             switch (currentState) {
-                case SCAN_MOTIF:
-                    runScanMotif();
-                    break;
-
-                case SHOOT_PRELOADS:
-                    runShootPreloads();
-                    break;
-
-                case NAV_TO_PRE_INTAKE:
-                    runNavToPreIntake();
-                    break;
-
-                case INTAKE_DRIVE:
-                    runIntakeDrive();
-                    break;
-
-                case PICKUP_BALLS:
-                    runPickupBalls();
-                    break;
-
-                case NAV_TO_SHOOT:
-                    runNavToShoot();
-                    break;
-
-                case ALIGN_AND_SHOOT:
-                    runAlignAndShoot();
-                    break;
-
-                case LEAVE_MARK:
-                    runLeaveMark();
-                    break;
-
+                case SCAN_MOTIF:      runScanMotif();      break;
+                case SHOOT_PRELOADS:  runShootPreloads();  break;
+                case NAV_TO_PRE_INTAKE: runNavToPreIntake(); break;
+                case INTAKE_DRIVE:    runIntakeDrive();    break;
+                case PICKUP_BALLS:    runPickupBalls();    break;
+                case NAV_TO_SHOOT:    runNavToShoot();     break;
+                case ALIGN_AND_SHOOT: runAlignAndShoot();  break;
+                case LEAVE_MARK:      runLeaveMark();      break;
                 case DONE:
                     stopAllMechanisms();
                     follower.breakFollowing();
                     break;
-
                 default:
                     break;
             }
@@ -223,14 +208,16 @@ public class AutoCloseTurn extends LinearOpMode {
         }
     }
 
+    // ===================== HARDWARE INIT =====================
+
     private void initHardware() {
         follower = Constants.createFollower(hardwareMap);
 
-        flywheelMotor = hardwareMap.get(DcMotorEx.class, "flywheel");
-        chamberSpinner = hardwareMap.get(DcMotor.class, "chamberSpinner");
-        intakeMotor = hardwareMap.get(DcMotor.class, "intakeMotor");
+        flywheelMotor  = hardwareMap.get(DcMotorEx.class, "flywheel");
+        chamberSpinner = hardwareMap.get(DcMotor.class,   "chamberSpinner");
+        intakeMotor    = hardwareMap.get(DcMotor.class,   "intakeMotor");
         artifactTransfer = hardwareMap.get(CRServo.class, "ATM");
-        limeServo = hardwareMap.get(Servo.class, "axonLime");
+        limeServo      = hardwareMap.get(Servo.class,     "axonLime");
 
         flywheelMotor.setDirection(DcMotorSimple.Direction.REVERSE);
         flywheelMotor.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
@@ -251,7 +238,7 @@ public class AutoCloseTurn extends LinearOpMode {
         limelight.init(hardwareMap);
         limelight.switchPipeline(0);
 
-        goalTargeter = new GoalTargeter(limelight);
+        goalTargeter  = new GoalTargeter(limelight);
         motifDetector = new MotifDetector();
 
         limeServo.setPosition(0.5);
@@ -260,31 +247,28 @@ public class AutoCloseTurn extends LinearOpMode {
     // ===================== STATE LOGIC =====================
 
     private void runScanMotif() {
-        if (detectedMotif == MotifDetector.Motif.UNKNOWN && motifDetector.hasConfidentDetection()) {
+        // Try to lock motif confidently while driving
+        if (detectedMotif == MotifDetector.Motif.UNKNOWN
+                && motifDetector.hasConfidentDetection()) {
             detectedMotif = motifDetector.getDetectedMotif();
             decisionReason = "Confident (Drive)";
             RobotLog.d("AUTO", "Motif Locked (Confident): " + detectedMotif);
         }
 
-        if (!follower.isBusy()) {
+        boolean arrived = !follower.isBusy();
+        boolean timedOut = stateTimer.seconds() > SCAN_TIMEOUT_SEC;
+
+        if (arrived || timedOut) {
             if (detectedMotif == MotifDetector.Motif.UNKNOWN) {
                 MotifDetector.Motif lastSeen = motifDetector.getDetectedMotif();
                 if (lastSeen != MotifDetector.Motif.UNKNOWN) {
                     detectedMotif = lastSeen;
-                    decisionReason = "Arrived (Weak)";
+                    decisionReason = arrived ? "Arrived (Weak)" : "Timeout (Weak)";
                 } else {
                     detectedMotif = MotifDetector.Motif.GPP;
-                    decisionReason = "Arrived (Default)";
+                    decisionReason = arrived ? "Arrived (Default)" : "Timeout (Default)";
                 }
                 RobotLog.d("AUTO", "Motif Locked (Final): " + detectedMotif);
-            }
-
-            limeServo.setPosition(0.5);
-            transitionTo(AutoState.SHOOT_PRELOADS);
-        } else if (stateTimer.seconds() > SCAN_TIMEOUT_SEC) {
-            if (detectedMotif == MotifDetector.Motif.UNKNOWN) {
-                detectedMotif = MotifDetector.Motif.GPP;
-                decisionReason = "Timeout (Default)";
             }
             limeServo.setPosition(0.5);
             transitionTo(AutoState.SHOOT_PRELOADS);
@@ -297,7 +281,10 @@ public class AutoCloseTurn extends LinearOpMode {
     }
 
     private void runNavToPreIntake() {
-        if (!follower.isBusy() && stateTimer.seconds() > 0.25) {
+        boolean arrived  = !follower.isBusy() && stateTimer.seconds() > 0.25;
+        boolean timedOut = stateTimer.seconds() > NAV_TIMEOUT_SEC;
+
+        if (arrived || timedOut) {
             intakeMotor.setPower(1.0);
 
             chamberTargetPos -= BACK_TO_INTAKE_TICKS;
@@ -307,21 +294,7 @@ public class AutoCloseTurn extends LinearOpMode {
             intakeSeqStage = 0;
             intakeSeqTimer.reset();
 
-            // Straight intake drive with constant heading
-            followConstantHeadingPath(preIntakePose, finalIntakePose, preIntakePose.getHeading());
-            transitionTo(AutoState.INTAKE_DRIVE);
-
-        } else if (stateTimer.seconds() > NAV_TIMEOUT_SEC) {
-            intakeMotor.setPower(1.0);
-
-            chamberTargetPos -= BACK_TO_INTAKE_TICKS;
-            chamberSpinner.setTargetPosition((int) chamberTargetPos);
-            chamberSpinner.setPower(1.0);
-
-            intakeSeqStage = 0;
-            intakeSeqTimer.reset();
-
-            followConstantHeadingPath(preIntakePose, finalIntakePose, preIntakePose.getHeading());
+            followShootToPreIntakePath();
             transitionTo(AutoState.INTAKE_DRIVE);
         }
     }
@@ -329,9 +302,10 @@ public class AutoCloseTurn extends LinearOpMode {
     private void runIntakeDrive() {
         updateIntakeIndexing();
 
-        if (!follower.isBusy() && stateTimer.seconds() > 0.25) {
-            transitionTo(AutoState.PICKUP_BALLS);
-        } else if (stateTimer.seconds() > 3.0) {
+        boolean arrived  = !follower.isBusy() && stateTimer.seconds() > 0.25;
+        boolean timedOut = stateTimer.seconds() > 3.0;
+
+        if (arrived || timedOut) {
             transitionTo(AutoState.PICKUP_BALLS);
         }
     }
@@ -347,10 +321,10 @@ public class AutoCloseTurn extends LinearOpMode {
     }
 
     private void runNavToShoot() {
-        if (!follower.isBusy() && stateTimer.seconds() > 0.5) {
-            intakeMotor.setPower(0);
-            startSecondShootingPhase();
-        } else if (stateTimer.seconds() > NAV_TIMEOUT_SEC) {
+        boolean arrived  = !follower.isBusy() && stateTimer.seconds() > 0.5;
+        boolean timedOut = stateTimer.seconds() > NAV_TIMEOUT_SEC;
+
+        if (arrived || timedOut) {
             intakeMotor.setPower(0);
             startSecondShootingPhase();
         }
@@ -362,7 +336,7 @@ public class AutoCloseTurn extends LinearOpMode {
         chamberSpinner.setPower(1.0);
 
         inSecondShootingPhase = true;
-        ballsShot = 0;
+        ballsShot     = 0;
         shootSubState = 0;
 
         transitionTo(AutoState.ALIGN_AND_SHOOT);
@@ -418,10 +392,13 @@ public class AutoCloseTurn extends LinearOpMode {
                     flywheelMotor.setVelocity(0);
 
                     if (!isSecondPhase) {
+                        // Set motif targets, then navigate to pre-intake
                         setTargetForMotif();
                         transitionTo(AutoState.NAV_TO_PRE_INTAKE);
                     } else {
-                        Pose leavePose = (selectedAlliance == Alliance.BLUE) ? LEAVE_MARK_BLUE : LEAVE_MARK_RED;
+                        // Done shooting — navigate to leave mark
+                        Pose leavePose = (selectedAlliance == Alliance.BLUE)
+                                ? LEAVE_MARK_BLUE : LEAVE_MARK_RED;
                         followConstantHeadingPath(shootPose, leavePose, shootPose.getHeading());
                         transitionTo(AutoState.LEAVE_MARK);
                     }
@@ -446,7 +423,6 @@ public class AutoCloseTurn extends LinearOpMode {
                     intakeSeqStage = 1;
                 }
                 break;
-
             case 1:
                 if (intakeSeqTimer.seconds() >= INTAKE_SPIN_DELAY) {
                     moveChamberStep();
@@ -454,7 +430,6 @@ public class AutoCloseTurn extends LinearOpMode {
                     intakeSeqStage = 2;
                 }
                 break;
-
             case 2:
                 if (intakeSeqTimer.seconds() >= INTAKE_SPIN_DELAY) {
                     moveChamberStep();
@@ -462,7 +437,6 @@ public class AutoCloseTurn extends LinearOpMode {
                     intakeSeqStage = 3;
                 }
                 break;
-
             case 3:
                 if (intakeSeqTimer.seconds() >= INTAKE_SPIN_DELAY) {
                     moveChamberStep();
@@ -470,7 +444,6 @@ public class AutoCloseTurn extends LinearOpMode {
                     intakeSeqStage = 4;
                 }
                 break;
-
             case 4:
             default:
                 break;
@@ -479,50 +452,53 @@ public class AutoCloseTurn extends LinearOpMode {
 
     // ===================== TARGET SELECTION =====================
 
+    /**
+     * Sets preIntakePose and finalIntakePose based on the detected motif and
+     * alliance. Does NOT start any path — path is started by runNavToPreIntake().
+     */
     private void setTargetForMotif() {
         if (selectedAlliance == Alliance.BLUE) {
             switch (detectedMotif) {
                 case GPP:
-                    preIntakePose = BLUE_INTAKE_GPP;
+                    preIntakePose   = BLUE_INTAKE_GPP;
                     finalIntakePose = BLUE_INTAKE_GPP_END;
                     break;
                 case PGP:
-                    preIntakePose = BLUE_INTAKE_PGP;
+                    preIntakePose   = BLUE_INTAKE_PGP;
                     finalIntakePose = BLUE_INTAKE_PGP_END;
                     break;
                 case PPG:
-                    preIntakePose = BLUE_INTAKE_PPG;
+                    preIntakePose   = BLUE_INTAKE_PPG;
                     finalIntakePose = BLUE_INTAKE_PPG_END;
                     break;
                 default:
-                    preIntakePose = BLUE_INTAKE_GPP;
+                    preIntakePose   = BLUE_INTAKE_GPP;
                     finalIntakePose = BLUE_INTAKE_GPP_END;
                     break;
             }
         } else {
             switch (detectedMotif) {
                 case GPP:
-                    preIntakePose = RED_INTAKE_GPP;
+                    preIntakePose   = RED_INTAKE_GPP;
                     finalIntakePose = RED_INTAKE_GPP_END;
                     break;
                 case PGP:
-                    preIntakePose = RED_INTAKE_PGP;
+                    preIntakePose   = RED_INTAKE_PGP;
                     finalIntakePose = RED_INTAKE_PGP_END;
                     break;
                 case PPG:
-                    preIntakePose = RED_INTAKE_PPG;
+                    preIntakePose   = RED_INTAKE_PPG;
                     finalIntakePose = RED_INTAKE_PPG_END;
                     break;
                 default:
-                    preIntakePose = RED_INTAKE_GPP;
+                    preIntakePose   = RED_INTAKE_GPP;
                     finalIntakePose = RED_INTAKE_GPP_END;
                     break;
             }
         }
 
-        RobotLog.d("AUTO", "Targets: Pre=" + preIntakePose + " | Final=" + finalIntakePose);
-
-        followShootToPreIntakePath();
+        RobotLog.d("AUTO", "Targets set — Pre=" + preIntakePose
+                + " | Final=" + finalIntakePose);
     }
 
     // ===================== PATH HELPERS =====================
@@ -532,7 +508,6 @@ public class AutoCloseTurn extends LinearOpMode {
                 .addPath(new BezierLine(start, end))
                 .setLinearHeadingInterpolation(start.getHeading(), end.getHeading())
                 .build();
-
         follower.followPath(currentPath);
     }
 
@@ -541,85 +516,101 @@ public class AutoCloseTurn extends LinearOpMode {
                 .addPath(new BezierLine(start, end))
                 .setConstantHeadingInterpolation(heading)
                 .build();
-
         follower.followPath(currentPath);
     }
 
+    /**
+     * Drives from shoot pose to pre-intake pose with no wide arc.
+     *
+     * Strategy (3 segments):
+     *   1. Turn in place at shoot XY: linearHeadingInterpolation from shoot
+     *      heading → intake heading. A small nudge in the direction of travel
+     *      gives Pedro a non-zero vector so it doesn't produce a curved arc.
+     *   2. Strafe straight to the correct Y row (constant intake heading).
+     *   3. Strafe straight to preIntakePose (constant intake heading).
+     */
     private void followShootToPreIntakePath() {
-        Pose turnPose;
-        Pose laneEntry;
-        double intakeHeading;
+        double intakeHeading = (selectedAlliance == Alliance.BLUE)
+                ? Math.toRadians(180) : Math.toRadians(0);
 
-        if (selectedAlliance == Alliance.BLUE) {
-            intakeHeading = Math.toRadians(180);
+        // Nudge direction: Blue moves in -X toward intake; Red moves in +X.
+        double nudgeX = (selectedAlliance == Alliance.BLUE)
+                ? -TURN_NUDGE_INCHES : TURN_NUDGE_INCHES;
 
-            // Same area as shoot, but with the intake heading
-            turnPose = new Pose(shootPose.getX(), shootPose.getY(), intakeHeading);
+        // Pose at shoot XY but with intake heading (tiny nudge so Pedro has a vector)
+        Pose shootAtIntakeHeading = new Pose(
+                shootPose.getX() + nudgeX,
+                shootPose.getY(),
+                intakeHeading);
 
-            // First align to intake row at same X as shoot
-            laneEntry = new Pose(shootPose.getX(), preIntakePose.getY(), intakeHeading);
-
-        } else {
-            intakeHeading = Math.toRadians(0);
-
-            turnPose = new Pose(shootPose.getX(), shootPose.getY(), intakeHeading);
-            laneEntry = new Pose(shootPose.getX(), preIntakePose.getY(), intakeHeading);
-        }
+        // Pose at shoot X, preIntake Y — the "lane entry" directly above/below target
+        Pose laneEntry = new Pose(
+                shootPose.getX() + nudgeX,
+                preIntakePose.getY(),
+                intakeHeading);
 
         currentPath = follower.pathBuilder()
-                // Tiny heading-change segment near shoot
-                .addPath(new BezierLine(shootPose, turnPose))
+                // Segment 1: turn in place (linear heading, tiny XY motion)
+                .addPath(new BezierLine(shootPose, shootAtIntakeHeading))
+                .setLinearHeadingInterpolation(
+                        shootPose.getHeading(), intakeHeading)
+
+                // Segment 2: strafe straight to correct row (constant heading)
+                .addPath(new BezierLine(shootAtIntakeHeading, laneEntry))
                 .setConstantHeadingInterpolation(intakeHeading)
 
-                // Move into the correct row while keeping heading fixed
-                .addPath(new BezierLine(turnPose, laneEntry))
-                .setConstantHeadingInterpolation(intakeHeading)
-
-                // Move from lane entry to pre-intake
+                // Segment 3: strafe straight to pre-intake (constant heading)
                 .addPath(new BezierLine(laneEntry, preIntakePose))
                 .setConstantHeadingInterpolation(intakeHeading)
                 .build();
 
-        follower.followPath(currentPath);
+        follower.followPath(currentPath, true);
     }
 
+    /**
+     * Returns from final intake pose back to shoot pose with no wide arc.
+     *
+     * Strategy (3 segments — mirror of outbound):
+     *   1. Strafe straight back to shoot X along the intake row (constant intake heading).
+     *   2. Strafe straight to shoot XY still on intake heading.
+     *   3. Turn in place back to shoot heading (linear heading interpolation).
+     */
     private void followReturnToShootPath() {
-        Pose laneExit;
-        Pose turnBackPose;
-        double intakeHeading;
+        double intakeHeading = (selectedAlliance == Alliance.BLUE)
+                ? Math.toRadians(180) : Math.toRadians(0);
         double shootHeading = shootPose.getHeading();
 
-        if (selectedAlliance == Alliance.BLUE) {
-            intakeHeading = Math.toRadians(180);
+        // Nudge direction mirrors the outbound nudge
+        double nudgeX = (selectedAlliance == Alliance.BLUE)
+                ? -TURN_NUDGE_INCHES : TURN_NUDGE_INCHES;
 
-            // From final intake, move out to shoot X while staying on intake heading
-            laneExit = new Pose(shootPose.getX(), finalIntakePose.getY(), intakeHeading);
+        // Lane exit: shoot X, final-intake Y (still on intake heading)
+        Pose laneExit = new Pose(
+                shootPose.getX() + nudgeX,
+                finalIntakePose.getY(),
+                intakeHeading);
 
-            // Near shoot area, restore shoot heading
-            turnBackPose = new Pose(shootPose.getX(), shootPose.getY(), shootHeading);
-
-        } else {
-            intakeHeading = Math.toRadians(0);
-
-            laneExit = new Pose(shootPose.getX(), finalIntakePose.getY(), intakeHeading);
-            turnBackPose = new Pose(shootPose.getX(), shootPose.getY(), shootHeading);
-        }
+        // Intermediate at shoot XY with intake heading (before turning back)
+        Pose shootAtIntakeHeading = new Pose(
+                shootPose.getX() + nudgeX,
+                shootPose.getY(),
+                intakeHeading);
 
         currentPath = follower.pathBuilder()
-                // Move along intake lane / row
+                // Segment 1: strafe back along intake row to shoot X
                 .addPath(new BezierLine(finalIntakePose, laneExit))
                 .setConstantHeadingInterpolation(intakeHeading)
 
-                // Move back toward shoot area, still holding intake heading
-                .addPath(new BezierLine(laneExit, turnBackPose))
+                // Segment 2: strafe from lane exit to shoot XY (constant heading)
+                .addPath(new BezierLine(laneExit, shootAtIntakeHeading))
                 .setConstantHeadingInterpolation(intakeHeading)
 
-                // Final settle to shoot pose with shoot heading
-                .addPath(new BezierLine(turnBackPose, shootPose))
-                .setConstantHeadingInterpolation(shootHeading)
+                // Segment 3: turn in place back to shoot heading
+                .addPath(new BezierLine(shootAtIntakeHeading, shootPose))
+                .setLinearHeadingInterpolation(intakeHeading, shootHeading)
                 .build();
 
-        follower.followPath(currentPath);
+        follower.followPath(currentPath, true);
     }
 
     // ===================== UTIL =====================
@@ -642,21 +633,21 @@ public class AutoCloseTurn extends LinearOpMode {
     }
 
     private void updateTelemetry() {
-        telemetry.addData("State", currentState);
-        telemetry.addData("Alliance", selectedAlliance);
-        telemetry.addData("Motif", detectedMotif);
-        telemetry.addData("Decision", decisionReason);
+        telemetry.addData("State",        currentState);
+        telemetry.addData("Alliance",     selectedAlliance);
+        telemetry.addData("Motif",        detectedMotif);
+        telemetry.addData("Decision",     decisionReason);
         telemetry.addData("Flywheel Vel", flywheelMotor.getVelocity());
 
         if (preIntakePose != null) {
-            telemetry.addData("PreIntake", "(%.1f, %.1f, %.1f)",
+            telemetry.addData("PreIntake", "(%.1f, %.1f, %.1f°)",
                     preIntakePose.getX(),
                     preIntakePose.getY(),
                     Math.toDegrees(preIntakePose.getHeading()));
         }
 
         if (finalIntakePose != null) {
-            telemetry.addData("FinalIntake", "(%.1f, %.1f, %.1f)",
+            telemetry.addData("FinalIntake", "(%.1f, %.1f, %.1f°)",
                     finalIntakePose.getX(),
                     finalIntakePose.getY(),
                     Math.toDegrees(finalIntakePose.getHeading()));
