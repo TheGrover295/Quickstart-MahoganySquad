@@ -33,8 +33,8 @@ public class AutoReplayAllenTest {
 
     MecanumDrive drivetrain;
     ReplayPID replayPID;
-    Gamepad gamepadReplay1;
-    Gamepad gamepadReplay2;
+    Gamepad gamepadReplay1 = new Gamepad();
+    Gamepad gamepadReplay2 = new Gamepad();
 
     PressHold recording;
     PressHold replay;
@@ -49,17 +49,11 @@ public class AutoReplayAllenTest {
     private CubicSpline1D ySpline;
     private CubicSpline1D thetaSpline;
 
-    boolean loaded;
     boolean calculated;
     int currentGamepadIndex = 0;
-    int currentPoseIndex = 0;
 
     StateEntryJson currentReplayStates;
     List<TimePose> splineReplayStates;
-
-    PathChain replayPath;
-    GamepadStateEntry gamepadDelta1;
-    GamepadStateEntry gamepadDelta2;
 
     GamepadStateEntry lastGamePad1;
     GamepadStateEntry lastGamePad2;
@@ -82,18 +76,16 @@ public class AutoReplayAllenTest {
 
         loadPointer();
         telemetry.addData("pointer: ", logPointer);
-        telemetry.update();
     }
 
     public void recordPositions() {
         File dir = new File(AppUtil.ROOT_FOLDER + "/TeamCodeLogs");
         if (!dir.exists()) dir.mkdirs();
         File file = new File(dir, "movement" + logPointer + ".json");
-        telemetry.addData("Recording, here: ", true);
         try (FileWriter writer = new FileWriter(file)) {
             Gson gson = new GsonBuilder().setPrettyPrinting().create();
             writer.write(gson.toJson(currentReplayStates));
-            telemetry.addData("Drive log written", true);
+            telemetry.addData("Drive log written", file.getAbsolutePath());
         } catch (Exception e) {
             telemetry.addData("Drive log error", e.getMessage());
         }
@@ -106,7 +98,7 @@ public class AutoReplayAllenTest {
         try (FileWriter writer = new FileWriter(file)) {
             Gson gson = new GsonBuilder().create();
             writer.write(gson.toJson(new PointerJson(logPointer)));
-            telemetry.addData("Pointer Saved written:", true);
+            telemetry.addData("Pointer Saved", logPointer);
         } catch (Exception e) {
             telemetry.addData("Pointer error", e.getMessage());
         }
@@ -122,7 +114,7 @@ public class AutoReplayAllenTest {
             Gson gson = new GsonBuilder().create();
             currentReplayStates = gson.fromJson(reader, StateEntryJson.class);
         } catch (Exception e) {
-            telemetry.addData("Failed to Load", true);
+            telemetry.addData("Failed to Load", e.getMessage());
         }
     }
 
@@ -136,21 +128,14 @@ public class AutoReplayAllenTest {
             Gson gson = new GsonBuilder().create();
             logPointer = gson.fromJson(reader, PointerJson.class).pointer;
         } catch (Exception e) {
-            telemetry.addData("Failed to Load Pointer", true);
+            telemetry.addData("Failed to Load Pointer", e.getMessage());
         }
     }
 
     public void update(){
-        follower.update();
-
         recording.checkStatus(gamepad1.a);
         replay.checkStatus(gamepad1.b);
         pointerInput.checkStatus(gamepad1.left_bumper);
-
-        telemetry.addData("LOG POINTER", logPointer);
-        telemetry.addData("Follower Busy", follower.isBusy());
-        telemetry.addData("recording is on", recording.isOn);
-        telemetry.addData("replay is on", replay.isOn);
 
         if (pointerInput.startPress) logPointer = 0;
         if (pointerInput.isOn) logPointer = (int) Math.floor(pointerInput.time.seconds());
@@ -207,23 +192,25 @@ public class AutoReplayAllenTest {
             double[] motorValues = replayPID.replayPIDMotorValues(currentTime, currentPose, endTime); //fl, fr, bl, br
             if (motorValues == null) {
                 replay.isOn = false;
-                // drivetrain.killSwitch(); // killSwitch doesn't exist in MecanumDrive
                 drivetrain.drive(0,0,0);
             } else {
-                // MecanumDrive has drive(forward, strafe, rotate) but PID gives motor powers.
-                // We might need to either add a way to set motor powers directly or convert back.
-                // Assuming we want to set motor powers directly if possible, but MecanumDrive doesn't expose them.
-                // ReplayPID.java calculates motor powers.
-                // For now, let's use the follower to set motor powers if possible, or update MecanumDrive.
-                // Since I can't easily change MecanumDrive to expose motors without seeing them, 
-                // I'll assume we want to use the calculated motor powers if we can find them.
-                // Actually, I'll just use drivetrain.drive with converted values or similar if I can't.
-                // ReplayPID.java: fl, fr, bl, br
-                // Let's assume we can't easily use MecanumDrive.drive(f, s, r) to exactly match motor powers.
-                // I will skip setting powers if I don't have access to motors.
-                // Wait, MecanumDrive.java HAS motors: leftFrontMotor, leftBackMotor, rightFrontMotor, rightBackMotor.
-                // But they are private.
+                drivetrain.setMotorPowers(motorValues[0], motorValues[1], motorValues[2], motorValues[3]);
+                
+                // Advance gamepad index if it's time
+                if (currentGamepadIndex + 1 < currentReplayStates.timeListGamepad.size() &&
+                        currentReplayStates.timeListGamepad.get(currentGamepadIndex + 1) <= currentTime) {
+                    currentGamepadIndex++;
+                }
+                
+                if (currentGamepadIndex < currentReplayStates.gamepad1List.size()) {
+                    gamepadReplay1 = currentReplayStates.gamepad1List.get(currentGamepadIndex).convertToGamepad(1);
+                    gamepadReplay2 = currentReplayStates.gamepad2List.get(currentGamepadIndex).convertToGamepad(2);
+                }
             }
+        }
+        
+        if (replay.endPress) {
+            drivetrain.drive(0,0,0);
         }
     }
 
@@ -240,6 +227,8 @@ public class AutoReplayAllenTest {
 
     public void buildCubicSpline(){
         splineReplayStates = new ArrayList<>();
+        if (currentReplayStates == null || currentReplayStates.poseList == null) return;
+        
         for (int i = 0; i < currentReplayStates.size; i++){
             splineReplayStates.add(new TimePose(currentReplayStates.poseList.get(i).x,
                     currentReplayStates.poseList.get(i).y,
@@ -255,7 +244,7 @@ public class AutoReplayAllenTest {
     }
 
     public double[] getTargets(double runtime){
-        if (!calculated) {buildCubicSpline(); calculated = true;}
+        if (!calculated) {buildCubicSpline();}
         if (xSpline == null) return new double[9];
         double tNow = runtime;
         double xTarget = xSpline.evaluate(tNow);
@@ -272,7 +261,7 @@ public class AutoReplayAllenTest {
     }
 
     public double[] getError(double runtime, Pose currentPose){
-        if (!calculated) {buildCubicSpline(); calculated = true;}
+        if (!calculated) {buildCubicSpline();}
         if (xSpline == null) return new double[6];
         double tNow = runtime;
         double xError = xSpline.evaluate(tNow) - currentPose.getX();

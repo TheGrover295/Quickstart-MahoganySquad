@@ -1,7 +1,5 @@
 package org.firstinspires.ftc.teamcode.pedroPathing.AutoRecord;
 
-import com.qualcomm.robotcore.eventloop.opmode.LinearOpMode;
-import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
 import com.qualcomm.robotcore.hardware.Gamepad;
 import com.qualcomm.robotcore.util.RobotLog;
 import com.google.gson.Gson;
@@ -14,7 +12,6 @@ import com.pedropathing.geometry.Pose;
 import com.pedropathing.geometry.BezierLine;
 import com.pedropathing.paths.Path;
 import com.pedropathing.paths.PathChain;
-import org.firstinspires.ftc.teamcode.pedroPathing.Constants;
 
 import java.io.FileWriter;
 import java.io.BufferedReader;
@@ -23,12 +20,11 @@ import java.io.File;
 import java.util.ArrayList;
 import java.util.List;
 
-@TeleOp(name = "Auto Replay Recorder", group = "TeleOp")
-public class AutoReplay extends LinearOpMode {
+public class AutoReplay {
     Follower follower;
-    Telemetry telemetryHelper;
-    Gamepad gamepad1Helper;
-    Gamepad gamepad2Helper;
+    Telemetry telemetry;
+    Gamepad gamepad1;
+    Gamepad gamepad2;
 
     Gamepad gamepadReplay1 = new Gamepad();
     Gamepad gamepadReplay2 = new Gamepad();
@@ -47,57 +43,18 @@ public class AutoReplay extends LinearOpMode {
     GamepadStateEntry gamepadDelta2;
     int logPointer = 0;
 
-    // Default constructor for OpMode
-    public AutoReplay() {}
-
-    // Constructor for helper usage
     public AutoReplay(Follower follower, Telemetry telemetry, Gamepad gamepad1, Gamepad gamepad2) {
         this.follower = follower;
-        this.telemetryHelper = telemetry;
-        this.gamepad1Helper = gamepad1;
-        this.gamepad2Helper = gamepad2;
+        this.telemetry = telemetry;
+        this.gamepad1 = gamepad1;
+        this.gamepad2 = gamepad2;
     }
 
-    @Override
-    public void runOpMode() {
-        follower = Constants.createFollower(hardwareMap);
-        follower.setStartingPose(new Pose(0,0,0));
-        
-        // Use OpMode's built-in objects
-        this.telemetryHelper = telemetry;
-        this.gamepad1Helper = gamepad1;
-        this.gamepad2Helper = gamepad2;
-        
-        initReplay();
-        
-        telemetry.addLine("Auto Replay Initialized");
-        telemetry.update();
-        
-        waitForStart();
-        
-        while (opModeIsActive()) {
-            follower.update();
-            updateReplay();
-            
-            // Basic Drive Logic if not replaying
-            if (!IsReplayOn()) {
-                double y = -gamepad1.left_stick_y;
-                double x = -gamepad1.left_stick_x;
-                double rx = -gamepad1.right_stick_x;
-                follower.setTeleOpDrive(y, x, rx, true);
-            }
-            
-            telemetry.update();
-        }
-    }
-
-    public void initReplay() {
+    public void init() {
         recording = new PressHold(PressHold.PressType.DoublePress);
         replay = new PressHold(PressHold.PressType.DoublePress);
         pointerInput = new PressHold(PressHold.PressType.LongPress);
-
         currentReplayStates = new StateEntryJson();
-
         loadPointer();
     }
 
@@ -110,9 +67,9 @@ public class AutoReplay extends LinearOpMode {
         try (FileWriter writer = new FileWriter(file)) {
             Gson gson = new GsonBuilder().setPrettyPrinting().create();
             writer.write(gson.toJson(currentReplayStates));
-            telemetryHelper.addData("Drive log written", file.getAbsolutePath());
+            telemetry.addData("Drive log written", file.getAbsolutePath());
         } catch (Exception e) {
-            telemetryHelper.addData("Drive log error", e.getMessage());
+            telemetry.addData("Drive log error", e.getMessage());
             RobotLog.e("AutoReplay: Record Error: " + e.getMessage());
         }
     }
@@ -126,48 +83,38 @@ public class AutoReplay extends LinearOpMode {
         try (FileWriter writer = new FileWriter(file)) {
             Gson gson = new GsonBuilder().create();
             writer.write(gson.toJson(new PointerJson(logPointer)));
-            telemetryHelper.addData("Pointer Saved", logPointer);
+            telemetry.addData("Pointer Saved", logPointer);
         } catch (Exception e) {
-            telemetryHelper.addData("Pointer error", e.getMessage());
+            telemetry.addData("Pointer error", e.getMessage());
         }
     }
 
     public void loadPoses() {
         File dir = new File(AppUtil.ROOT_FOLDER + "/TeamCodeLogs");
         File file = new File(dir, "movement" + logPointer + ".json");
-
-        if (!file.exists()) {
-            telemetryHelper.addData("Replay Error", "File not found: " + file.getName());
-            return;
-        }
-
+        if (!file.exists()) return;
         try (BufferedReader reader = new BufferedReader(new FileReader(file))) {
             Gson gson = new GsonBuilder().create();
             currentReplayStates = gson.fromJson(reader, StateEntryJson.class);
-            telemetryHelper.addData("Loaded poses", currentReplayStates.size);
         } catch (Exception e) {
-            telemetryHelper.addData("Failed to Load", e.getMessage());
+            telemetry.addData("Failed to Load", e.getMessage());
         }
     }
 
     public void loadPointer() {
         File dir = new File(AppUtil.ROOT_FOLDER + "/TeamCodeLogs");
         File file = new File(dir, "pointer.json");
-
         if (!file.exists()) return;
-
         try (BufferedReader reader = new BufferedReader(new FileReader(file))) {
             Gson gson = new GsonBuilder().create();
             logPointer = gson.fromJson(reader, PointerJson.class).pointer;
-        } catch (Exception e) {
-            // Ignore if pointer doesn't exist
-        }
+        } catch (Exception e) {}
     }
 
-    public void updateReplay() {
-        recording.checkStatus(gamepad1Helper.a);
-        replay.checkStatus(gamepad1Helper.b);
-        pointerInput.checkStatus(gamepad1Helper.left_bumper);
+    public void update() {
+        recording.checkStatus(gamepad1.a);
+        replay.checkStatus(gamepad1.b);
+        pointerInput.checkStatus(gamepad1.left_bumper);
 
         if (pointerInput.startPress) logPointer = 0;
         if (pointerInput.isOn) logPointer = (int) Math.floor(pointerInput.time.seconds());
@@ -176,41 +123,39 @@ public class AutoReplay extends LinearOpMode {
         if (recording.startPress) {
             currentReplayStates = new StateEntryJson();
             lastPose = follower.getPose();
-            gamepadDelta1 = new GamepadStateEntry(gamepad1Helper);
-            gamepadDelta2 = new GamepadStateEntry(gamepad2Helper);
-            // Record initial state
+            if (lastPose == null) lastPose = new Pose(0,0,0);
+            gamepadDelta1 = new GamepadStateEntry(gamepad1);
+            gamepadDelta2 = new GamepadStateEntry(gamepad2);
             addCurrentState();
         }
 
         if (recording.isOn) {
-            double dist = Math.hypot(follower.getPose().getX() - lastPose.getX(), follower.getPose().getY() - lastPose.getY());
-            double headingDiff = Math.abs(follower.getPose().getHeading() - lastPose.getHeading());
-            
-            if (dist > deltaError || headingDiff > deltaHeading) {
-                addCurrentState();
-                lastPose = follower.getPose();
-                gamepadDelta1 = new GamepadStateEntry(gamepad1Helper);
-                gamepadDelta2 = new GamepadStateEntry(gamepad2Helper);
-            } else {
-                gamepadDelta1.mergeBooleans(new GamepadStateEntry(gamepad1Helper));
-                gamepadDelta2.mergeBooleans(new GamepadStateEntry(gamepad2Helper));
+            Pose currentPose = follower.getPose();
+            if (currentPose != null) {
+                double dist = Math.hypot(currentPose.getX() - lastPose.getX(), currentPose.getY() - lastPose.getY());
+                double headingDiff = Math.abs(currentPose.getHeading() - lastPose.getHeading());
+                if (dist > deltaError || headingDiff > deltaHeading) {
+                    addCurrentState();
+                    lastPose = currentPose;
+                    gamepadDelta1 = new GamepadStateEntry(gamepad1);
+                    gamepadDelta2 = new GamepadStateEntry(gamepad2);
+                } else {
+                    gamepadDelta1.mergeBooleans(new GamepadStateEntry(gamepad1));
+                    gamepadDelta2.mergeBooleans(new GamepadStateEntry(gamepad2));
+                }
             }
         }
 
-        if (recording.endPress) {
-            recordPositions();
-        }
+        if (recording.endPress) recordPositions();
 
         if (replay.startPress) {
             loadPoses();
             if (currentReplayStates != null && currentReplayStates.size > 1) {
                 ArrayList<Path> paths = new ArrayList<>();
                 Pose currentPose = follower.getPose();
-                
-                // First path: go to start position of recording
+                if (currentPose == null) currentPose = new Pose(0,0,0);
                 PoseStateEntry startRecorded = currentReplayStates.poseList.get(0);
                 paths.add(new Path(new BezierLine(currentPose, new Pose(startRecorded.x, startRecorded.y, startRecorded.heading))));
-                
                 for (int i = 0; i < currentReplayStates.size - 1; i++) {
                     PoseStateEntry p1 = currentReplayStates.poseList.get(i);
                     PoseStateEntry p2 = currentReplayStates.poseList.get(i + 1);
@@ -232,26 +177,28 @@ public class AutoReplay extends LinearOpMode {
 
         if (replay.endPress) {
             follower.breakFollowing();
+            follower.startTeleopDrive();
         }
-
         displayTelemetry();
     }
 
     private void addCurrentState() {
+        Pose p = follower.getPose();
+        if (p == null) p = new Pose(0,0,0);
         currentReplayStates.timeList.add(recording.time.seconds());
-        currentReplayStates.poseList.add(new PoseStateEntry(follower.getPose()));
+        currentReplayStates.poseList.add(new PoseStateEntry(p));
         currentReplayStates.gamepad1List.add(gamepadDelta1);
         currentReplayStates.gamepad2List.add(gamepadDelta2);
         currentReplayStates.size++;
     }
 
     private void displayTelemetry() {
-        telemetryHelper.addData("LOG POINTER", logPointer);
-        telemetryHelper.addData("Recording", recording.isOn);
-        telemetryHelper.addData("Replaying", replay.isOn);
-        if (recording.isOn) telemetryHelper.addData("Recorded States", currentReplayStates.size);
-        if (replay.isOn) telemetryHelper.addData("Replay Index", replayIndex + "/" + currentReplayStates.size);
-        telemetryHelper.addData("Follower Busy", follower.isBusy());
+        telemetry.addData("LOG POINTER", logPointer);
+        telemetry.addData("Recording", recording.isOn);
+        telemetry.addData("Replaying", replay.isOn);
+        if (recording.isOn) telemetry.addData("Recorded States", currentReplayStates.size);
+        if (replay.isOn) telemetry.addData("Replay Index", replayIndex + "/" + currentReplayStates.size);
+        telemetry.addData("Follower Busy", follower.isBusy());
     }
 
     public boolean IsReplayOn() {
