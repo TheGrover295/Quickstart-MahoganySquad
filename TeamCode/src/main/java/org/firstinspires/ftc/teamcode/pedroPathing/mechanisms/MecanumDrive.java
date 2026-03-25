@@ -57,6 +57,16 @@ public class MecanumDrive {
     }
 
     /**
+     * Sets individual motor powers.
+     */
+    public void setMotorPowers(double fl, double fr, double bl, double br) {
+        leftFrontMotor.setPower(fl);
+        rightFrontMotor.setPower(fr);
+        leftBackMotor.setPower(bl);
+        rightBackMotor.setPower(br);
+    }
+
+    /**
      * Drives the robot using robot-centric controls.
      *
      * @param forward Forward/Backward power (-1.0 to 1.0)
