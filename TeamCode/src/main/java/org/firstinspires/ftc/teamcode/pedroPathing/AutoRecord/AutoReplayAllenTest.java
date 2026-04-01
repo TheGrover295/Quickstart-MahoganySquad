@@ -2,17 +2,17 @@ package org.firstinspires.ftc.teamcode.pedroPathing.AutoRecord;
 
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
+import com.qualcomm.robotcore.eventloop.opmode.OpMode;
+import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
 import com.qualcomm.robotcore.hardware.Gamepad;
 
-import org.firstinspires.ftc.robotcore.external.Telemetry;
 import org.firstinspires.ftc.robotcore.internal.system.AppUtil;
 
 import com.pedropathing.follower.Follower;
 import com.pedropathing.geometry.Pose;
 import com.pedropathing.math.MathFunctions;
-import com.pedropathing.paths.Path;
-import com.pedropathing.paths.PathChain;
 
+import org.firstinspires.ftc.teamcode.pedroPathing.Constants;
 import org.firstinspires.ftc.teamcode.pedroPathing.mechanisms.MecanumDrive;
 
 import java.io.BufferedReader;
@@ -21,16 +21,11 @@ import java.io.FileReader;
 import java.io.FileWriter;
 import java.util.ArrayList;
 import java.util.List;
-import java.lang.reflect.Type;
-import com.google.gson.reflect.TypeToken;
 
-public class AutoReplayAllenTest {
+@TeleOp(name = "Auto Replay Allen Test", group = "TeleOp")
+public class AutoReplayAllenTest extends OpMode {
 
     Follower follower;
-    Telemetry telemetry;
-    Gamepad gamepad1;
-    Gamepad gamepad2;
-
     MecanumDrive drivetrain;
     ReplayPID replayPID;
     Gamepad gamepadReplay1 = new Gamepad();
@@ -59,15 +54,14 @@ public class AutoReplayAllenTest {
     GamepadStateEntry lastGamePad2;
     int logPointer = 0;
 
-    public AutoReplayAllenTest(Follower follower, Telemetry telemetry, Gamepad gamepad1, Gamepad gamepad2, MecanumDrive drivetrain) {
-        this.follower = follower;
-        this.gamepad1 = gamepad1;
-        this.gamepad2 = gamepad2;
-        this.telemetry = telemetry;
-        this.drivetrain = drivetrain;
-    }
-
+    @Override
     public void init() {
+        follower = Constants.createFollower(hardwareMap);
+        follower.setStartingPose(new Pose(0, 0, 0));
+
+        drivetrain = new MecanumDrive();
+        drivetrain.init(hardwareMap);
+
         recording = new PressHold(PressHold.PressType.DoublePress);
         replay = new PressHold(PressHold.PressType.DoublePress);
         pointerInput = new PressHold(PressHold.PressType.LongPress);
@@ -78,61 +72,16 @@ public class AutoReplayAllenTest {
         telemetry.addData("pointer: ", logPointer);
     }
 
-    public void recordPositions() {
-        File dir = new File(AppUtil.ROOT_FOLDER + "/TeamCodeLogs");
-        if (!dir.exists()) dir.mkdirs();
-        File file = new File(dir, "movement" + logPointer + ".json");
-        try (FileWriter writer = new FileWriter(file)) {
-            Gson gson = new GsonBuilder().setPrettyPrinting().create();
-            writer.write(gson.toJson(currentReplayStates));
-            telemetry.addData("Drive log written", file.getAbsolutePath());
-        } catch (Exception e) {
-            telemetry.addData("Drive log error", e.getMessage());
-        }
+    @Override
+    public void start() {
+        follower.startTeleopDrive();
     }
 
-    public void savePointer() {
-        File dir = new File(AppUtil.ROOT_FOLDER + "/TeamCodeLogs");
-        if (!dir.exists()) dir.mkdirs();
-        File file = new File(dir, "pointer.json");
-        try (FileWriter writer = new FileWriter(file)) {
-            Gson gson = new GsonBuilder().create();
-            writer.write(gson.toJson(new PointerJson(logPointer)));
-            telemetry.addData("Pointer Saved", logPointer);
-        } catch (Exception e) {
-            telemetry.addData("Pointer error", e.getMessage());
-        }
-    }
-
-    public void loadPoses() {
-        File dir = new File(AppUtil.ROOT_FOLDER + "/TeamCodeLogs");
-        File file = new File(dir, "movement" + logPointer + ".json");
-
-        if (!file.exists()) return;
-
-        try (BufferedReader reader = new BufferedReader(new FileReader(file))) {
-            Gson gson = new GsonBuilder().create();
-            currentReplayStates = gson.fromJson(reader, StateEntryJson.class);
-        } catch (Exception e) {
-            telemetry.addData("Failed to Load", e.getMessage());
-        }
-    }
-
-    public void loadPointer() {
-        File dir = new File(AppUtil.ROOT_FOLDER + "/TeamCodeLogs");
-        File file = new File(dir, "pointer.json");
-
-        if (!file.exists()) return;
-
-        try (BufferedReader reader = new BufferedReader(new FileReader(file))) {
-            Gson gson = new GsonBuilder().create();
-            logPointer = gson.fromJson(reader, PointerJson.class).pointer;
-        } catch (Exception e) {
-            telemetry.addData("Failed to Load Pointer", e.getMessage());
-        }
-    }
-
-    public void update(){
+    @Override
+    public void loop() {
+        follower.update();
+        
+        // --- Original update() logic ---
         recording.checkStatus(gamepad1.a);
         replay.checkStatus(gamepad1.b);
         pointerInput.checkStatus(gamepad1.left_bumper);
@@ -211,6 +160,73 @@ public class AutoReplayAllenTest {
         
         if (replay.endPress) {
             drivetrain.drive(0,0,0);
+        }
+
+        // Manual drive if not replaying
+        if (!replay.isOn) {
+            double x = Math.pow(gamepad1.left_stick_x, 3);
+            double y = -Math.pow(gamepad1.left_stick_y, 3);
+            double rz = Math.pow(gamepad1.right_stick_x, 3);
+            drivetrain.drive(y, x, rz);
+        }
+        
+        telemetry.addData("pointer: ", logPointer);
+        telemetry.addData("Recording: ", recording.isOn);
+        telemetry.addData("Replaying: ", replay.isOn);
+        telemetry.update();
+    }
+
+    public void recordPositions() {
+        File dir = new File(AppUtil.ROOT_FOLDER + "/TeamCodeLogs");
+        if (!dir.exists()) dir.mkdirs();
+        File file = new File(dir, "movement" + logPointer + ".json");
+        try (FileWriter writer = new FileWriter(file)) {
+            Gson gson = new GsonBuilder().setPrettyPrinting().create();
+            writer.write(gson.toJson(currentReplayStates));
+            telemetry.addData("Drive log written", file.getAbsolutePath());
+        } catch (Exception e) {
+            telemetry.addData("Drive log error", e.getMessage());
+        }
+    }
+
+    public void savePointer() {
+        File dir = new File(AppUtil.ROOT_FOLDER + "/TeamCodeLogs");
+        if (!dir.exists()) dir.mkdirs();
+        File file = new File(dir, "pointer.json");
+        try (FileWriter writer = new FileWriter(file)) {
+            Gson gson = new GsonBuilder().create();
+            writer.write(gson.toJson(new PointerJson(logPointer)));
+            telemetry.addData("Pointer Saved", logPointer);
+        } catch (Exception e) {
+            telemetry.addData("Pointer error", e.getMessage());
+        }
+    }
+
+    public void loadPoses() {
+        File dir = new File(AppUtil.ROOT_FOLDER + "/TeamCodeLogs");
+        File file = new File(dir, "movement" + logPointer + ".json");
+
+        if (!file.exists()) return;
+
+        try (BufferedReader reader = new BufferedReader(new FileReader(file))) {
+            Gson gson = new GsonBuilder().create();
+            currentReplayStates = gson.fromJson(reader, StateEntryJson.class);
+        } catch (Exception e) {
+            telemetry.addData("Failed to Load", e.getMessage());
+        }
+    }
+
+    public void loadPointer() {
+        File dir = new File(AppUtil.ROOT_FOLDER + "/TeamCodeLogs");
+        File file = new File(dir, "pointer.json");
+
+        if (!file.exists()) return;
+
+        try (BufferedReader reader = new BufferedReader(new FileReader(file))) {
+            Gson gson = new GsonBuilder().create();
+            logPointer = gson.fromJson(reader, PointerJson.class).pointer;
+        } catch (Exception e) {
+            telemetry.addData("Failed to Load Pointer", e.getMessage());
         }
     }
 

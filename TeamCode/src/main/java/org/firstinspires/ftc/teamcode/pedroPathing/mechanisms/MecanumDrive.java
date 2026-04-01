@@ -57,16 +57,6 @@ public class MecanumDrive {
     }
 
     /**
-     * Sets individual motor powers.
-     */
-    public void setMotorPowers(double fl, double fr, double bl, double br) {
-        leftFrontMotor.setPower(fl);
-        rightFrontMotor.setPower(fr);
-        leftBackMotor.setPower(bl);
-        rightBackMotor.setPower(br);
-    }
-
-    /**
      * Drives the robot using robot-centric controls.
      *
      * @param forward Forward/Backward power (-1.0 to 1.0)
@@ -136,5 +126,20 @@ public class MecanumDrive {
      */
     public double getHeading() {
         return imu.getRobotYawPitchRollAngles().getYaw(AngleUnit.RADIANS);
+    }
+
+    /**
+     * Sets the motor powers directly.
+     *
+     * @param fl Left Front motor power
+     * @param fr Right Front motor power
+     * @param bl Left Back motor power
+     * @param br Right Back motor power
+     */
+    public void setMotorPowers(double fl, double fr, double bl, double br) {
+        leftFrontMotor.setPower(fl);
+        rightFrontMotor.setPower(fr);
+        leftBackMotor.setPower(bl);
+        rightBackMotor.setPower(br);
     }
 }
