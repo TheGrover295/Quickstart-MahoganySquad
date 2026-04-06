@@ -4,6 +4,7 @@ import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.qualcomm.robotcore.eventloop.opmode.OpMode;
 import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
+import com.qualcomm.robotcore.hardware.DcMotor;
 import com.qualcomm.robotcore.hardware.Gamepad;
 
 import org.firstinspires.ftc.robotcore.internal.system.AppUtil;
@@ -30,6 +31,8 @@ public class AutoReplayAllenTest extends OpMode {
     ReplayPID replayPID;
     Gamepad gamepadReplay1 = new Gamepad();
     Gamepad gamepadReplay2 = new Gamepad();
+
+    private DcMotor leftFront, leftBack, rightFront, rightBack;
 
     PressHold recording;
     PressHold replay;
@@ -61,6 +64,16 @@ public class AutoReplayAllenTest extends OpMode {
 
         drivetrain = new MecanumDrive();
         drivetrain.init(hardwareMap);
+
+        leftFront = hardwareMap.get(DcMotor.class, "leftFront");
+        leftBack = hardwareMap.get(DcMotor.class, "leftBack");
+        rightFront = hardwareMap.get(DcMotor.class, "rightFront");
+        rightBack = hardwareMap.get(DcMotor.class, "rightBack");
+
+        leftBack.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
+        leftFront.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
+        rightBack.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
+        rightFront.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
 
         recording = new PressHold(PressHold.PressType.DoublePress);
         replay = new PressHold(PressHold.PressType.DoublePress);
