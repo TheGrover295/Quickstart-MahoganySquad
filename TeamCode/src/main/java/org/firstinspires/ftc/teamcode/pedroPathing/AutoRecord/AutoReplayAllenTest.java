@@ -39,7 +39,7 @@ public class AutoReplayAllenTest extends OpMode {
     PressHold pointerInput;
     Pose lastPose = new Pose(0, 0, 0);
     double lastTime = 0;
-    double deltaTime = 0.1;
+    double deltaTime = 0.02; // Record at 50Hz for smooth curves
     double deltaError = 2;
     int replayIndex = 0;
 
@@ -94,7 +94,6 @@ public class AutoReplayAllenTest extends OpMode {
     public void loop() {
         follower.update();
         
-        // --- Original update() logic ---
         recording.checkStatus(gamepad1.a);
         replay.checkStatus(gamepad1.b);
         pointerInput.checkStatus(gamepad1.left_bumper);
@@ -143,6 +142,7 @@ public class AutoReplayAllenTest extends OpMode {
             buildCubicSpline();
             replay.resetTimer();
             currentGamepadIndex = 0;
+            replayPID.reset();
         }
         
         if (replay.isOn){
@@ -151,14 +151,13 @@ public class AutoReplayAllenTest extends OpMode {
             if (currentPose == null) currentPose = new Pose(0,0,0);
             
             double endTime = xSpline != null ? xSpline.endTime() : 0;
-            double[] motorValues = replayPID.replayPIDMotorValues(currentTime, currentPose, endTime); //fl, fr, bl, br
+            double[] motorValues = replayPID.replayPIDMotorValues(currentTime, currentPose, endTime);
             if (motorValues == null) {
                 replay.isOn = false;
                 drivetrain.drive(0,0,0);
             } else {
                 drivetrain.setMotorPowers(motorValues[0], motorValues[1], motorValues[2], motorValues[3]);
                 
-                // Advance gamepad index if it's time
                 if (currentGamepadIndex + 1 < currentReplayStates.timeListGamepad.size() &&
                         currentReplayStates.timeListGamepad.get(currentGamepadIndex + 1) <= currentTime) {
                     currentGamepadIndex++;
@@ -175,7 +174,6 @@ public class AutoReplayAllenTest extends OpMode {
             drivetrain.drive(0,0,0);
         }
 
-        // Manual drive if not replaying
         if (!replay.isOn) {
             double x = Math.pow(gamepad1.left_stick_x, 3);
             double y = -Math.pow(gamepad1.left_stick_y, 3);
@@ -183,10 +181,37 @@ public class AutoReplayAllenTest extends OpMode {
             drivetrain.drive(y, x, rz);
         }
         
-        telemetry.addData("pointer: ", logPointer);
-        telemetry.addData("Recording: ", recording.isOn);
-        telemetry.addData("Replaying: ", replay.isOn);
+        telemetry.addData("Slot", logPointer);
+        telemetry.addData("Recording", recording.isOn);
+        telemetry.addData("Replaying", replay.isOn);
         telemetry.update();
+    }
+
+    public void buildCubicSpline(){
+        splineReplayStates = new ArrayList<>();
+        if (currentReplayStates == null || currentReplayStates.poseList == null || currentReplayStates.size == 0) return;
+        
+        // --- Heading Unwrapping ---
+        double lastHeading = currentReplayStates.poseList.get(0).heading;
+        double unwrappedHeading = lastHeading;
+
+        for (int i = 0; i < currentReplayStates.size; i++){
+            double currentHeading = currentReplayStates.poseList.get(i).heading;
+            double deltaHeading = MathFunctions.normalizeAngle(currentHeading - lastHeading);
+            unwrappedHeading += deltaHeading;
+            lastHeading = currentHeading;
+
+            splineReplayStates.add(new TimePose(currentReplayStates.poseList.get(i).x,
+                    currentReplayStates.poseList.get(i).y,
+                    currentReplayStates.timeListPose.get(i),
+                    unwrappedHeading));
+        }
+        if (splineReplayStates.size() >= 2) {
+            xSpline = new CubicSpline1D(splineReplayStates, pose -> pose.x);
+            ySpline = new CubicSpline1D(splineReplayStates, pose -> pose.y);
+            thetaSpline = new CubicSpline1D(splineReplayStates, pose -> pose.theta);
+            calculated = true;
+        }
     }
 
     public void recordPositions() {
@@ -196,10 +221,7 @@ public class AutoReplayAllenTest extends OpMode {
         try (FileWriter writer = new FileWriter(file)) {
             Gson gson = new GsonBuilder().setPrettyPrinting().create();
             writer.write(gson.toJson(currentReplayStates));
-            telemetry.addData("Drive log written", file.getAbsolutePath());
-        } catch (Exception e) {
-            telemetry.addData("Drive log error", e.getMessage());
-        }
+        } catch (Exception e) {}
     }
 
     public void savePointer() {
@@ -209,38 +231,27 @@ public class AutoReplayAllenTest extends OpMode {
         try (FileWriter writer = new FileWriter(file)) {
             Gson gson = new GsonBuilder().create();
             writer.write(gson.toJson(new PointerJson(logPointer)));
-            telemetry.addData("Pointer Saved", logPointer);
-        } catch (Exception e) {
-            telemetry.addData("Pointer error", e.getMessage());
-        }
+        } catch (Exception e) {}
     }
 
     public void loadPoses() {
         File dir = new File(AppUtil.ROOT_FOLDER + "/TeamCodeLogs");
         File file = new File(dir, "movement" + logPointer + ".json");
-
         if (!file.exists()) return;
-
         try (BufferedReader reader = new BufferedReader(new FileReader(file))) {
             Gson gson = new GsonBuilder().create();
             currentReplayStates = gson.fromJson(reader, StateEntryJson.class);
-        } catch (Exception e) {
-            telemetry.addData("Failed to Load", e.getMessage());
-        }
+        } catch (Exception e) {}
     }
 
     public void loadPointer() {
         File dir = new File(AppUtil.ROOT_FOLDER + "/TeamCodeLogs");
         File file = new File(dir, "pointer.json");
-
         if (!file.exists()) return;
-
         try (BufferedReader reader = new BufferedReader(new FileReader(file))) {
             Gson gson = new GsonBuilder().create();
             logPointer = gson.fromJson(reader, PointerJson.class).pointer;
-        } catch (Exception e) {
-            telemetry.addData("Failed to Load Pointer", e.getMessage());
-        }
+        } catch (Exception e) {}
     }
 
     public boolean IsReplayOn(){
@@ -254,135 +265,66 @@ public class AutoReplayAllenTest extends OpMode {
         return gamepadReplay2;
     }
 
-    public void buildCubicSpline(){
-        splineReplayStates = new ArrayList<>();
-        if (currentReplayStates == null || currentReplayStates.poseList == null) return;
-        
-        for (int i = 0; i < currentReplayStates.size; i++){
-            splineReplayStates.add(new TimePose(currentReplayStates.poseList.get(i).x,
-                    currentReplayStates.poseList.get(i).y,
-                    currentReplayStates.timeListPose.get(i),
-                    currentReplayStates.poseList.get(i).heading));
-        }
-        if (splineReplayStates.size() >= 2) {
-            xSpline = new CubicSpline1D(splineReplayStates, pose -> pose.x);
-            ySpline = new CubicSpline1D(splineReplayStates, pose -> pose.y);
-            thetaSpline = new CubicSpline1D(splineReplayStates, pose -> pose.theta);
-            calculated = true;
-        }
-    }
-
     public double[] getTargets(double runtime){
         if (!calculated) {buildCubicSpline();}
         if (xSpline == null) return new double[9];
         double tNow = runtime;
-        double xTarget = xSpline.evaluate(tNow);
-        double yTarget = ySpline.evaluate(tNow);
-        double headingTarget = thetaSpline.evaluate(tNow);
-
-        double vxTarget = xSpline.derivative(tNow);
-        double vyTarget = ySpline.derivative(tNow);
-        double omegaTarget = thetaSpline.derivative(tNow);
-        double alphaTarget = thetaSpline.secondDerivative(tNow);
-        double ayTarget = ySpline.secondDerivative(tNow);
-        double axTarget = xSpline.secondDerivative(tNow);
-        return new double[]{xTarget, yTarget, headingTarget, vxTarget, vyTarget, omegaTarget, axTarget, ayTarget, alphaTarget};
+        return new double[]{xSpline.evaluate(tNow), ySpline.evaluate(tNow), thetaSpline.evaluate(tNow), 
+                            xSpline.derivative(tNow), ySpline.derivative(tNow), thetaSpline.derivative(tNow), 
+                            xSpline.secondDerivative(tNow), ySpline.secondDerivative(tNow), thetaSpline.secondDerivative(tNow)};
     }
 
     public double[] getError(double runtime, Pose currentPose){
         if (!calculated) {buildCubicSpline();}
         if (xSpline == null) return new double[6];
         double tNow = runtime;
-        double xError = xSpline.evaluate(tNow) - currentPose.getX();
-        double yError = ySpline.evaluate(tNow) - currentPose.getY();
-        double headingError = MathFunctions.normalizeAngle(thetaSpline.evaluate(tNow) - currentPose.getHeading());
-
-        double vxError = xSpline.derivative(tNow) - follower.getVelocity().getXComponent();
-        double vyError = ySpline.derivative(tNow)- follower.getVelocity().getYComponent();
-        double omegaError = MathFunctions.normalizeAngle(thetaSpline.derivative(tNow) - follower.getVelocity().getTheta());
-        
-        return new double[]{xError, yError, headingError, vxError, vyError, omegaError};
+        return new double[]{xSpline.evaluate(tNow) - currentPose.getX(), 
+                            ySpline.evaluate(tNow) - currentPose.getY(), 
+                            MathFunctions.normalizeAngle(thetaSpline.evaluate(tNow) - currentPose.getHeading()),
+                            xSpline.derivative(tNow) - follower.getVelocity().getXComponent(),
+                            ySpline.derivative(tNow) - follower.getVelocity().getYComponent(),
+                            MathFunctions.normalizeAngle(thetaSpline.derivative(tNow) - follower.getVelocity().getTheta())};
     }
 
     public static class GamepadStateEntry {
-        public boolean a, b, x, y;
-        public boolean dpad_up, dpad_down, dpad_left, dpad_right;
-        public boolean left_bumper, right_bumper;
-        public boolean left_stick_button, right_stick_button;
-        public float left_stick_x, left_stick_y;
-        public float right_stick_x, right_stick_y;
-        public float left_trigger, right_trigger;
+        public boolean a, b, x, y, dpad_up, dpad_down, dpad_left, dpad_right, left_bumper, right_bumper, left_stick_button, right_stick_button;
+        public float left_stick_x, left_stick_y, right_stick_x, right_stick_y, left_trigger, right_trigger;
 
         public GamepadStateEntry(Gamepad g) {
-            this.a = g.a;
-            this.b = g.b;
-            this.x = g.x;
-            this.y = g.y;
-            this.dpad_up = g.dpad_up;
-            this.dpad_down = g.dpad_down;
-            this.dpad_left = g.dpad_left;
-            this.dpad_right = g.dpad_right;
-            this.left_bumper = g.left_bumper;
-            this.right_bumper = g.right_bumper;
-            this.left_stick_button = g.left_stick_button;
-            this.right_stick_button = g.right_stick_button;
-            this.left_stick_x = g.left_stick_x;
-            this.left_stick_y = g.left_stick_y;
-            this.right_stick_x = g.right_stick_x;
-            this.right_stick_y = g.right_stick_y;
-            this.left_trigger = g.left_trigger;
-            this.right_trigger = g.right_trigger;
+            this.a = g.a; this.b = g.b; this.x = g.x; this.y = g.y;
+            this.dpad_up = g.dpad_up; this.dpad_down = g.dpad_down; this.dpad_left = g.dpad_left; this.dpad_right = g.dpad_right;
+            this.left_bumper = g.left_bumper; this.right_bumper = g.right_bumper;
+            this.left_stick_button = g.left_stick_button; this.right_stick_button = g.right_stick_button;
+            this.left_stick_x = g.left_stick_x; this.left_stick_y = g.left_stick_y;
+            this.right_stick_x = g.right_stick_x; this.right_stick_y = g.right_stick_y;
+            this.left_trigger = g.left_trigger; this.right_trigger = g.right_trigger;
         }
 
         public Gamepad convertToGamepad(int gamepadNum) {
             Gamepad g = new Gamepad();
             if (gamepadNum == 2) g.a = this.a;
-            g.b = this.b;
-            g.x = this.x;
-            g.y = this.y;
-            g.dpad_up = this.dpad_up;
-            g.dpad_down = this.dpad_down;
-            g.dpad_left = this.dpad_left;
-            g.dpad_right = this.dpad_right;
-            g.left_bumper = this.left_bumper;
-            g.right_bumper = this.right_bumper;
-            g.left_stick_button = this.left_stick_button;
-            g.right_stick_button = this.right_stick_button;
-            g.left_stick_x = this.left_stick_x;
-            g.left_stick_y = this.left_stick_y;
-            g.right_stick_x = this.right_stick_x;
-            g.right_stick_y = this.right_stick_y;
-            g.left_trigger = this.left_trigger;
-            g.right_trigger = this.right_trigger;
+            g.b = this.b; g.x = this.x; g.y = this.y;
+            g.dpad_up = this.dpad_up; g.dpad_down = this.dpad_down; g.dpad_left = this.dpad_left; g.dpad_right = this.dpad_right;
+            g.left_bumper = this.left_bumper; g.right_bumper = this.right_bumper;
+            g.left_stick_button = this.left_stick_button; g.right_stick_button = this.right_stick_button;
+            g.left_stick_x = this.left_stick_x; g.left_stick_y = this.left_stick_y;
+            g.right_stick_x = this.right_stick_x; g.right_stick_y = this.right_stick_y;
+            g.left_trigger = this.left_trigger; g.right_trigger = this.right_trigger;
             return g;
         }
 
         public boolean compareGamepad(GamepadStateEntry that) {
-            return a == that.a &&
-                    b == that.b &&
-                    x == that.x &&
-                    y == that.y &&
-                    dpad_up == that.dpad_up &&
-                    dpad_down == that.dpad_down &&
-                    dpad_left == that.dpad_left &&
-                    dpad_right == that.dpad_right &&
-                    left_bumper == that.left_bumper &&
-                    right_bumper == that.right_bumper &&
-                    left_stick_button == that.left_stick_button &&
-                    right_stick_button == that.right_stick_button &&
-                    Math.abs(left_trigger - that.left_trigger) < 0.00001 &&
-                    Math.abs(right_trigger - that.right_trigger) < 0.00001;
+            return a == that.a && b == that.b && x == that.x && y == that.y && dpad_up == that.dpad_up &&
+                   dpad_down == that.dpad_down && dpad_left == that.dpad_left && dpad_right == that.dpad_right &&
+                   left_bumper == that.left_bumper && right_bumper == that.right_bumper &&
+                   left_stick_button == that.left_stick_button && right_stick_button == that.right_stick_button &&
+                   Math.abs(left_trigger - that.left_trigger) < 0.001 && Math.abs(right_trigger - that.right_trigger) < 0.001;
         }
     }
 
     public static class PoseStateEntry {
         public double x, y, heading;
-
-        public PoseStateEntry(Pose pose) {
-            this.x = pose.getX();
-            this.y = pose.getY();
-            this.heading = pose.getHeading();
-        }
+        public PoseStateEntry(Pose pose) { this.x = pose.getX(); this.y = pose.getY(); this.heading = pose.getHeading(); }
     }
 
     public static class StateEntryJson {
@@ -396,8 +338,6 @@ public class AutoReplayAllenTest extends OpMode {
 
     public static class PointerJson {
         public int pointer = 0;
-        public PointerJson(int pointer){
-            this.pointer = pointer;
-        }
+        public PointerJson(int pointer){ this.pointer = pointer; }
     }
 }

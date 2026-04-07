@@ -11,6 +11,16 @@ public class ReplayPID {
         this.autoReplay = autoReplay;
     }
 
+    public void reset() {
+        integralHistoryX = 0;
+        integralHistoryY = 0;
+        integralHistoryTheta = 0;
+        previousTime = 0;
+        previousErrorTheta = 0;
+        previousErrorY = 0;
+        previousErrorX = 0;
+    }
+
     public double[] replayPIDMotorValues(double currentTime, Pose currentPose, double endTime){
         if (currentTime >= endTime - .01) {return null;}
         double[] targetList;
