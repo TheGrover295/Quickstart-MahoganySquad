@@ -13,6 +13,11 @@ import com.pedropathing.follower.Follower;
 import com.pedropathing.geometry.Pose;
 import com.pedropathing.math.MathFunctions;
 
+import org.firstinspires.ftc.teamcode.pedroPathing.AutoRecord.CubicSpline1D;
+import org.firstinspires.ftc.teamcode.pedroPathing.AutoRecord.DoubleAdapter;
+import org.firstinspires.ftc.teamcode.pedroPathing.AutoRecord.PressHold;
+import org.firstinspires.ftc.teamcode.pedroPathing.AutoRecord.TimePose;
+
 import org.firstinspires.ftc.teamcode.pedroPathing.Constants;
 import org.firstinspires.ftc.teamcode.pedroPathing.mechanisms.MecanumDrive;
 

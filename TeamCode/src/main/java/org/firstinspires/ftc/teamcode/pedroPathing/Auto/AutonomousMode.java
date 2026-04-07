@@ -79,10 +79,10 @@ public class AutonomousMode extends LinearOpMode {
     // UPDATED: Changed from Power to Velocity based on Drive file
     private static final double SHOOT_VELOCITY = 1350; //1350
 
-    private static final double CHAMBER_WAIT = 1.9; //1.9, 1.0, 1.4, 2.4
-    private static final double START_WAIT = 2.5;
-    private static final double ATM_PUSH_TIME_FIRST = 1.2; //2.0
-    private static final double ATM_PUSH_TIME_NORMAL = 0.9;
+    private static final double CHAMBER_WAIT = 1.3; //1.9, 1.0, 1.4, 2.4
+    private static final double START_WAIT = 2.3;
+    private static final double ATM_PUSH_TIME_FIRST = 0.9; //2.0
+    private static final double ATM_PUSH_TIME_NORMAL = 0.4;
 
     // --- Chamber Stepper Variables ---
     private final double TICKS_PER_STEP = 475.06; // (A Button)
