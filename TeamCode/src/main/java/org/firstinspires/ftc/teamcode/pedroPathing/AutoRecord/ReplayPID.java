@@ -56,10 +56,10 @@ public class ReplayPID {
         double forward = controlX * sinH + controlY * cosH; // robot-forward
         double strafe  = controlX * cosH - controlY * sinH; // robot-left
 
-        double fl = forward + strafe + controlTheta;
-        double fr = forward - strafe - controlTheta;
-        double bl = forward - strafe + controlTheta;
-        double br = forward + strafe - controlTheta;
+        double fl = forward + strafe - controlTheta;
+        double fr = forward - strafe + controlTheta;
+        double bl = forward - strafe - controlTheta;
+        double br = forward + strafe + controlTheta;
 
         //normalize to one
         double max = Math.max(1.0, Math.max(Math.abs(fl), Math.max(Math.abs(fr), Math.max(Math.abs(bl), Math.abs(br)))));
