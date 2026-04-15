@@ -26,6 +26,8 @@ public class drive extends LinearOpMode {
     private DcMotor intakeMotor;
     private DcMotorEx flywheelMotor;
 
+    private DcMotor extend;
+
     private DcMotor chamberSpinner;
     public CRServo artifactTransfer;
 
@@ -92,6 +94,7 @@ public class drive extends LinearOpMode {
         intakeMotor = hardwareMap.get(DcMotor.class, "intakeMotor");
         chamberSpinner = hardwareMap.get(DcMotor.class, "chamberSpinner");
         artifactTransfer = hardwareMap.get(CRServo.class, "ATM");
+        extend = hardwareMap.get(DcMotor.class, "extend");
 
 
         flywheelReadyLed = hardwareMap.get(Servo.class, "flywheelLed");
@@ -195,6 +198,15 @@ public class drive extends LinearOpMode {
             leftFront.setPower((y + x + rz) * speedMultiplier);
             rightBack.setPower(((y + x) - rz) * speedMultiplier);
             rightFront.setPower(((y - x) - rz) * speedMultiplier);
+
+            // Extend Logic
+            if (gamepad2.dpad_right) {
+                extend.setPower(0.65);
+            } else if (gamepad2.dpad_left) {
+                extend.setPower(-0.65);
+            } else {
+                extend.setPower(0);
+            }
 
 
             // =========================================================
